@@ -301,3 +301,112 @@ console.log(`(interface) ユーザー名: ${user2.name}, 年齢: ${user2.age}, �
  *  2. age を文字列にしてみて、tsc でエラー内容を見てみる。
  *  3. プロパティ名をtypoしてみる（age → ag）と、TS がどう怒るかを見る。
  */
+ 
+/*------------------------------------------------------
+ * 第12章 配列と for 文
+ *  - number[] / string[] などの配列型
+ *  - for / for-of で配列を回す
+ *-----------------------------------------------------*/
+
+// number の配列
+const scores: number[] = [80, 90, 75];
+console.log("scores:", scores);
+
+// string の配列
+const fruits: string[] = ["apple", "banana", "orange"];
+console.log("fruits:", fruits);
+
+// ふつうの for 文で回す
+for (let i = 0; i < scores.length; i++) {
+  console.log(`scores[${i}] = ${scores[i]}`);
+}
+
+// for-of で「要素だけ」取り出す
+for (const fruit of fruits) {
+  console.log("fruit:", fruit);
+}
+
+/*
+練習アイデア:
+  - 自分の好きなゲームタイトルを string[] で作って、
+    for-of で1つずつ表示してみる。
+  - number[] の配列を作って、合計値・平均値を計算する関数を作ってみる。
+*/
+
+/*------------------------------------------------------
+ * 第13章 ユニオン型 (union type)
+ *  - string | number のように「どちらか」の型を表現
+ *-----------------------------------------------------*/
+
+// string か number のどちらかを受け取る ID
+type ID = string | number;
+
+function printId(id: ID): void {
+  // typeof で中身を見て分岐するのが定番
+  if (typeof id === "string") {
+    console.log("ID (string):", id.toUpperCase());
+  } else {
+    console.log("ID (number):", id.toFixed(2));
+  }
+}
+
+printId("user-123");
+printId(456);
+
+// 練習: boolean も許す IDLike = string | number | boolean を作ってみる
+
+
+/*------------------------------------------------------
+ * 第14章 型エイリアスの活用
+ *  - ユニオン型や複雑な型に「名前」を付ける
+ *-----------------------------------------------------*/
+
+// 「成功」か「失敗」かを表す Result 型
+type SuccessResult = {
+  success: true;
+  value: number;
+};
+
+type ErrorResult = {
+  success: false;
+  errorMessage: string;
+};
+
+type Result = SuccessResult | ErrorResult;
+
+function divide(a: number, b: number): Result {
+  if (b === 0) {
+    return {
+      success: false,
+      errorMessage: "0 で割ることはできません。",
+    };
+  }
+  return {
+    success: true,
+    value: a / b,
+  };
+}
+
+const r1 = divide(10, 2);
+const r2 = divide(10, 0);
+
+function printResult(result: Result): void {
+  if (result.success) {
+    // SuccessResult と確定するので value が安全に使える
+    console.log("割り算の結果:", result.value);
+  } else {
+    console.log("エラー:", result.errorMessage);
+  }
+}
+
+printResult(r1);
+printResult(r2);
+
+/*
+この先の候補（順番の一例）:
+  - 第15章 タプル ([string, number] など)
+  - 第16章 クラスとコンストラクタ / メソッド
+  - 第17章 非同期処理 (Promise / async/await)
+  - 第18章 ジェネリクス (Array<T>, Promise<T> など)
+気になるものから 1 つ言ってくれれば、その章をここに続けて書いていく。
+*/

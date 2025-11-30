@@ -1,3 +1,4 @@
+"use strict";
 // ======================================================
 // TypeScript 超入門 ～ main.ts を教科書にして全部覚える計画 ～
 //
@@ -12,14 +13,14 @@
  *-----------------------------------------------------*/
 // TypeScript の「型付き変数」
 // 形式: let 変数名: 型 = 値;
-var message = "これは TypeScript の message だぜぇ";
+let message = "これは TypeScript の message だぜぇ";
 //        ^^^^^^ ここが「型」
 console.log("message:", message);
 // number 型（数値）
-var age = 20;
+let age = 20;
 console.log("age:", age);
 // boolean 型（真偽値）: true か false
-var isAdult = age >= 18;
+let isAdult = age >= 18;
 console.log("isAdult:", isAdult);
 /* ここまでで出てきたキーワードまとめ:
  *  - let        : あとで中身を変えられる変数
@@ -68,10 +69,10 @@ message = "中身を別の文字列に変更";
 // --- JavaScript風 と TypeScript風 の比較 ----------------------
 // JavaScript 風（型を書かない）
 // TS でも動くけど、型チェックが弱くなる書き方
-var jsStyleValue = "文字からスタート";
+let jsStyleValue = "文字からスタート";
 // jsStyleValue = 999; // ← JS 的には OK だが、何が入っているか分かりにくい
 // TypeScript 風（型を書く）
-var tsStyleValue = "文字からスタート（TS風）";
+let tsStyleValue = "文字からスタート（TS風）";
 // tsStyleValue = 999; // ← これは TS がコンパイルエラーにして止めてくれる
 console.log("jsStyleValue:", jsStyleValue);
 console.log("tsStyleValue:", tsStyleValue);
@@ -80,10 +81,10 @@ console.log("tsStyleValue:", tsStyleValue);
  *  - const でも型を付けられる
  *  - 右辺から型を「推論」してくれる
  *-----------------------------------------------------*/
-var userName = "Tokum"; // 明示的に string を指定
+const userName = "Tokum"; // 明示的に string を指定
 console.log("userName:", userName);
 // 型推論（型を書かなくても、string と推論される例）
-var nickName = "トクム";
+const nickName = "トクム";
 // ↑ これは自動的に string 型として扱われる。
 //   VS Code で nickName にカーソルを当てると、型ヒントが見えるはず。
 console.log("nickName:", nickName);
@@ -92,7 +93,7 @@ console.log("nickName:", nickName);
  *  - 文字列の中に変数を埋め込みやすい書き方
  *-----------------------------------------------------*/
 // バッククォート ` ... ` で囲んで、${変数} で埋め込む
-var profile = "\u540D\u524D\u306F ".concat(userName, "\uFF08").concat(nickName, "\uFF09\u3001\u5E74\u9F62\u306F ").concat(age, " \u6B73\u3067\u3059\u3002");
+const profile = `名前は ${userName}（${nickName}）、年齢は ${age} 歳です。`;
 console.log(profile);
 // ※ 普通の "..." + "..." 連結より読みやすいので、現代JS/TSの定番。
 /*------------------------------------------------------
@@ -105,7 +106,7 @@ function add(a, b) {
     // a と b は number 型なので、間違って文字列を渡すとコンパイルエラーになる
     return a + b;
 }
-var sum = add(5, 7);
+const sum = add(5, 7);
 console.log("5 + 7 =", sum);
 // ↓ これはエラーになる例（試したい時だけコメントを外して tsc してみる）
 //
@@ -118,31 +119,31 @@ console.log("5 + 7 =", sum);
  *  - any は「なんでもアリ」= できるだけ避ける
  *-----------------------------------------------------*/
 // JavaScript 的に「なんでもアリ」にしたい時に any が使えるが、危険。
-var jsLikeValue = "最初は文字列";
+let jsLikeValue = "最初は文字列";
 // ↑ any 型にすると「なんでもアリ」になる（= JS に近い危険モード)
 jsLikeValue = 123; // 数字を入れてもOK
 jsLikeValue = false; // true / false を入れてもOK
 console.log("jsLikeValue:", jsLikeValue);
 // TypeScript らしく「型を決めておく」と、ミスを早めに止めてくれる：
-var strictValue = 10;
+let strictValue = 10;
 // strictValue = "文字"; // ← コメントを外して tsc するとコンパイルエラーになる
 console.log("strictValue:", strictValue);
 // その型を使って変数を宣言
-var user = {
+const user = {
     name: "Tokum",
     age: 20,
     isAdult: true,
 };
 console.log("user:", user);
-console.log("\u30E6\u30FC\u30B6\u30FC\u540D: ".concat(user.name, ", \u5E74\u9F62: ").concat(user.age, ", \u5927\u4EBA\u30D5\u30E9\u30B0: ").concat(user.isAdult));
+console.log(`ユーザー名: ${user.name}, 年齢: ${user.age}, 大人フラグ: ${user.isAdult}`);
 // interface を使って変数を宣言
-var user2 = {
+const user2 = {
     name: "Interface太郎",
     age: 30,
     isAdult: true,
 };
 console.log("user2:", user2);
-console.log("(interface) \u30E6\u30FC\u30B6\u30FC\u540D: ".concat(user2.name, ", \u5E74\u9F62: ").concat(user2.age, ", \u5927\u4EBA\u30D5\u30E9\u30B0: ").concat(user2.isAdult));
+console.log(`(interface) ユーザー名: ${user2.name}, 年齢: ${user2.age}, 大人フラグ: ${user2.isAdult}`);
 /* type と interface のざっくり違い（今はこれだけでOK）:
  *
  *  - どっちも「オブジェクトの形」を表現できる
@@ -174,3 +175,66 @@ console.log("(interface) \u30E6\u30FC\u30B6\u30FC\u540D: ".concat(user2.name, ",
  *  2. age を文字列にしてみて、tsc でエラー内容を見てみる。
  *  3. プロパティ名をtypoしてみる（age → ag）と、TS がどう怒るかを見る。
  */
+/*------------------------------------------------------
+ * 第12章 配列と for 文
+ *  - number[] / string[] などの配列型
+ *  - for / for-of で配列を回す
+ *-----------------------------------------------------*/
+// number の配列
+const scores = [80, 90, 75];
+console.log("scores:", scores);
+// string の配列
+const fruits = ["apple", "banana", "orange"];
+console.log("fruits:", fruits);
+// ふつうの for 文で回す
+for (let i = 0; i < scores.length; i++) {
+    console.log(`scores[${i}] = ${scores[i]}`);
+}
+// for-of で「要素だけ」取り出す
+for (const fruit of fruits) {
+    console.log("fruit:", fruit);
+}
+function printId(id) {
+    // typeof で中身を見て分岐するのが定番
+    if (typeof id === "string") {
+        console.log("ID (string):", id.toUpperCase());
+    }
+    else {
+        console.log("ID (number):", id.toFixed(2));
+    }
+}
+printId("user-123");
+printId(456);
+function divide(a, b) {
+    if (b === 0) {
+        return {
+            success: false,
+            errorMessage: "0 で割ることはできません。",
+        };
+    }
+    return {
+        success: true,
+        value: a / b,
+    };
+}
+const r1 = divide(10, 2);
+const r2 = divide(10, 0);
+function printResult(result) {
+    if (result.success) {
+        // SuccessResult と確定するので value が安全に使える
+        console.log("割り算の結果:", result.value);
+    }
+    else {
+        console.log("エラー:", result.errorMessage);
+    }
+}
+printResult(r1);
+printResult(r2);
+/*
+この先の候補（順番の一例）:
+  - 第15章 タプル ([string, number] など)
+  - 第16章 クラスとコンストラクタ / メソッド
+  - 第17章 非同期処理 (Promise / async/await)
+  - 第18章 ジェネリクス (Array<T>, Promise<T> など)
+気になるものから 1 つ言ってくれれば、その章をここに続けて書いていく。
+*/

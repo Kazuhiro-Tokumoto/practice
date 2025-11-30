@@ -13,3 +13,9 @@ TS -> JS
 tsc main.ts
 
 うっすnodejs入れとけよ
+
+
+
+
+あ、変えるときは
+## npx tscで全部変わるぞ
