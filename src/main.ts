@@ -17,7 +17,7 @@
 // 形式: let 変数名: 型 = 値;
 
 let message: string = "これは TypeScript の message だぜぇ";
-//        ^^^^^^ ここが「型」
+//           ^^^^^^ ここが「型」
 
 console.log("message:", message);
 
@@ -409,4 +409,38 @@ printResult(r2);
   - 第17章 非同期処理 (Promise / async/await)
   - 第18章 ジェネリクス (Array<T>, Promise<T> など)
 気になるものから 1 つ言ってくれれば、その章をここに続けて書いていく。
+*/
+
+/*------------------------------------------------------
+ * 第15章 タプル (tuple)
+ *  - [string, number] のように「順番」と「長さ」が決まった配列
+ *-----------------------------------------------------*/
+
+// 「ユーザー名と年齢」を 1 セットで表すタプル
+type UserTuple = [string, number];
+
+const userTuple1: UserTuple = ["Tokum", 20];
+console.log("userTuple1:", userTuple1);
+console.log(`名前: ${userTuple1[0]}, 年齢: ${userTuple1[1]}`);
+
+// ↓ 型が合わないとエラーになる例（試すときだけコメントアウトを外す）
+// const badUserTuple: UserTuple = [20, "Tokum"]; // 順番が逆なのでエラー
+// const badUserTuple2: UserTuple = ["Tokum"];    // 要素数が足りないのでエラー
+
+// タプルの配列: ユーザーをたくさん持つ
+const userList: UserTuple[] = [
+  ["Alice", 18],
+  ["Bob", 25],
+  ["Carol", 30],
+];
+
+for (const [name, age] of userList) {
+  // 分割代入で name, age をそれぞれ取り出す
+  console.log(`(tuple) 名前: ${name}, 年齢: ${age}`);
+}
+
+/*
+練習アイデア:
+  - [string, number, boolean] で「名前・年齢・大人フラグ」のタプルを作る。
+  - そのタプルの配列を作って、for-of + 分割代入で全部表示してみる。
 */
