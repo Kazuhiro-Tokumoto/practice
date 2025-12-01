@@ -4,11 +4,13 @@
     "module": "commonjs",
     "strict": true,
     "esModuleInterop": true,
-
     "rootDir": "./src",
     "outDir": "./dist",
+    "forceConsistentCasingInFileNames": true,
 
-    "forceConsistentCasingInFileNames": true
+    // Node.js の型定義・モジュール解決を使う
+    "moduleResolution": "node",
+    "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["src", "rennsyuu.ts"]
 }

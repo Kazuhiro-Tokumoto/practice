@@ -18,4 +18,5 @@ tsc main.ts
 
 
 あ、変えるときは
-## npx tscで全部変わるぞ
+## npx tsc
+## で全部変わるぞ
