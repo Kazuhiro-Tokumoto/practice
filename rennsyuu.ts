@@ -241,25 +241,34 @@ console.log(`ユーザー名: ${user.name}, 年齢: ${user.age}, 大人フラグ
 
 /*------------------------------------------------------
  * 第11章 インターフェース (interface)
- *  - type とほぼ同じ「オブジェクトの型」の書き方
- *  - C++ の struct にかなり近いイメージ
+ *  ここでは UserLike という「ユーザー情報の形」を interface で定義している。
+ *
+ *  interface UserLike {
+ *    name: string;    // ユーザー名（文字列）
+ *    age: number;     // 年齢（数値）
+ *    isAdult: boolean;// 大人かどうか（真偽値）
+ *  }
+ *
+ *  こうして「形」を先に決めておくことで、
+ *    - 必要なプロパティが全部そろっているか
+ *    - 型が合っているか（string / number / boolean など）
+ *  を TypeScript がチェックしてくれる。
  *-----------------------------------------------------*/
 
-// これまでの User（type 版）
-// type User = {
-//   name: string;
-//   age: number;
-//   isAdult: boolean;
-// };
-
-// interface 版（書き方が少し違うだけで、意味はほぼ同じ）
+// UserLike インターフェース:
+//   1人のユーザーが「どんな情報を持っているか」を表す設計図。
 interface UserLike {
-  name: string;
-  age: number;
-  isAdult: boolean;
+  name: string;    // ユーザー名（例: "Interface太郎"）
+  age: number;     // 年齢（例: 30）
+  isAdult: boolean;// 大人かどうか（true/false）
 }
 
-// interface を使って変数を宣言
+// interface を使って変数を宣言:
+//   user2 は「UserLike 型ですよ」と宣言しているので、
+//   - name が string じゃないとダメ
+//   - age が number じゃないとダメ
+//   - isAdult が boolean じゃないとダメ
+//   という条件をコンパイル時にチェックしてくれる。
 const user2: UserLike = {
   name: "Interface太郎",
   age: 30,
@@ -565,4 +574,155 @@ async function runUserInputDemo() {
 runUserInputDemo().catch((err) => {
   console.error("エラーが発生しました:", err);
   rl.close();
+});
+
+/*------------------------------------------------------
+ * 第17章 DOM 操作まとめ（ブラウザ側での TypeScript 練習）
+ *
+ * ここでやること（すべて document / window を使う基本の DOM 操作）:
+ *   1. 既存の要素を取得してテキストを書き換える
+ *   2. 要素を新しく作って body に追加する
+ *   3. input から値を取って、p に結果を表示する
+ *   4. ボタンのクリックイベントを取る
+ *   5. li を追加していく「ログリスト」を作る
+ *   6. classList で表示/非表示を切り替える
+ *
+ * これらは全部「index.html に <script src='dist/rennsyuu.js'> を書いて
+ * ブラウザで開いたとき」に動く想定のコード。
+ *-----------------------------------------------------*/
+
+// HTML の読み込みが完了したタイミングで初期化処理を走らせる。
+// （HTML がまだないタイミングで document.getElementById すると null になるため）
+window.addEventListener("DOMContentLoaded", () => {
+  /*----------------------------------------------
+   * 1. 既存の要素を取得してテキストを書き換える
+   *
+   *   想定する HTML:
+   *     <p id="dom-sample-text">ここが書き換わる予定のテキスト</p>
+   *---------------------------------------------*/
+  const sampleText = document.getElementById("dom-sample-text");
+  if (sampleText) {
+    // textContent で中身の文字を上書きする
+    sampleText.textContent = "TypeScript から書き換えたテキストです。";
+  }
+
+  /*----------------------------------------------
+   * 2. 要素を新しく作って body に追加する
+   *
+   *   HTML に何もなくても、ここで勝手に <p> が増える。
+   *---------------------------------------------*/
+  // <p> 要素を1つ作る（まだ画面には出ない、「箱だけ」の状態）
+  const addedP = document.createElement("p");
+  addedP.textContent = "TypeScript から追加された行です。(DOM 操作デモ)";
+
+  // body の一番最後にくっつける → ここで初めて画面に現れる
+  document.body.appendChild(addedP);
+
+  /*----------------------------------------------
+   * 3. input から値を取って、p に結果を表示する
+   *
+   *   想定する HTML:
+   *     <input id="dom-input" type="text" />
+   *     <button id="dom-input-button">表示</button>
+   *     <p id="dom-input-result"></p>
+   *---------------------------------------------*/
+  const input = document.getElementById("dom-input") as HTMLInputElement | null;
+  const inputButton = document.getElementById("dom-input-button");
+  const inputResult = document.getElementById("dom-input-result");
+
+  if (input && inputButton && inputResult) {
+    inputButton.addEventListener("click", () => {
+      // input.value で入力された文字列を取得
+      const text = input.value;
+      // 結果の p に反映
+      inputResult.textContent = `あなたが入力した文字: ${text}`;
+    });
+  }
+
+  /*----------------------------------------------
+   * 4. add2 を使った簡単な電卓フォーム
+   *
+   *   想定する HTML:
+   *     <input id="calc-a" type="number" />
+   *     <input id="calc-b" type="number" />
+   *     <input id="calc-c" type="number" />
+   *     <button id="calc-button">計算</button>
+   *     <p id="calc-result"></p>
+   *
+   *   第6章の add 関数と同じノリで、
+   *   第1〜5章で覚えた number や if を DOM と一緒に使ってみる例。
+   *---------------------------------------------*/
+  const calcA = document.getElementById("calc-a") as HTMLInputElement | null;
+  const calcB = document.getElementById("calc-b") as HTMLInputElement | null;
+  const calcC = document.getElementById("calc-c") as HTMLInputElement | null;
+  const calcButton = document.getElementById("calc-button");
+  const calcResult = document.getElementById("calc-result");
+
+  if (calcA && calcB && calcC && calcButton && calcResult) {
+    // お試し用の初期値
+    calcA.value = "10";
+    calcB.value = "5";
+    calcC.value = "1"; // 1=足し算
+
+    calcButton.addEventListener("click", () => {
+      const a = Number(calcA.value);
+      const b = Number(calcB.value);
+      const c = Number(calcC.value);
+
+      // 入力チェック
+      if (Number.isNaN(a) || Number.isNaN(b) || Number.isNaN(c)) {
+        calcResult.textContent = "a, b, c には数値を入力してください。";
+        return;
+      }
+
+      // ここでは、rennsyuu.ts 側にある add と同じような関数がある前提で書いている
+      // （別のファイルの add2 を真似して自分で作っても OK）
+      const value = add(a, b); // まず普通の足し算の結果を出す例
+      calcResult.textContent = `add(${a}, ${b}) の結果: ${value}`;
+    });
+  }
+
+  /*----------------------------------------------
+   * 5. li を追加していく「ログリスト」
+   *
+   *   想定する HTML:
+   *     <button id="log-button">ログ追加</button>
+   *     <ul id="log-list"></ul>
+   *---------------------------------------------*/
+  const logButton = document.getElementById("log-button");
+  const logList = document.getElementById("log-list");
+
+  if (logButton && logList instanceof HTMLUListElement) {
+    let counter = 1;
+
+    logButton.addEventListener("click", () => {
+      const li = document.createElement("li");
+      li.textContent = `ログ ${counter} 回目`;
+      counter++;
+
+      logList.appendChild(li);
+    });
+  }
+
+  /*----------------------------------------------
+   * 6. classList を使って表示/非表示を切り替える
+   *
+   *   想定する HTML:
+   *     <p id="toggle-text" class="hidden">表示/非表示を切り替えるテキスト</p>
+   *     <button id="toggle-button">表示切り替え</button>
+   *
+   *   想定する CSS:
+   *     .hidden {
+   *       display: none;
+   *     }
+   *---------------------------------------------*/
+  const toggleText = document.getElementById("toggle-text");
+  const toggleButton = document.getElementById("toggle-button");
+
+  if (toggleText && toggleButton) {
+    toggleButton.addEventListener("click", () => {
+      // classList.toggle で「hidden クラスがあれば外す / なければ付ける」
+      toggleText.classList.toggle("hidden");
+    });
+  }
 });

@@ -6,12 +6,7 @@
     "esModuleInterop": true,
     "rootDir": "./src",
     "outDir": "./dist",
-    "forceConsistentCasingInFileNames": true,
-
-    // Node.js の型定義・モジュール解決を使う
-    "moduleResolution": "node",
-    "types": ["node"],
-    "lib": ["ES2020", "DOM"]
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "rennsyuu.ts"]
+  "include": ["src", "main.ts"]
 }
