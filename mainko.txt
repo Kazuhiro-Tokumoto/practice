@@ -1,0 +1,93 @@
+
+function add(a: number, b: number, c: number): number {
+
+  let answer: number = NaN;
+
+  // c の値に応じて、実際に計算する内容を分けている
+  if (c === 1) {
+    // 1 のとき: 足し算
+    answer = a + b;
+  } else if (c === 2) {
+    // 2 のとき: 引き算
+    answer = a - b;
+  } else if (c === 3) {
+    // 3 のとき: 掛け算
+    answer = a * b;
+  } else if (c === 4) {
+    // 4 のとき: 割り算
+    answer = a / b;
+  } else if (c === 5) {
+    // 5 のとき: 剰余 (あまり)
+    answer = a % b;
+  }
+
+  // 計算結果 answer を返す
+  return answer;
+}
+
+// ここから下は、add2 がどう動くかをコンソールで確認するためのテストコード
+console.log(add(10, 5, 1)); // 15  (10 + 5)
+console.log(add(10, 5, 2)); // 5   (10 - 5)
+console.log(add(10, 5, 3)); // 50  (10 * 5)
+console.log(add(10, 5, 4)); // 2   (10 / 5)
+console.log(add(10, 5, 5)); // 0   (10 % 5)
+console.log(add(10, 5, 6)); // NaN (どの if にも入らないので NaN のまま)
+
+// ===============================
+// ここから HTML に行(要素)を追加する処理
+// ===============================
+
+// add2 関数はそのまま（省略）
+// ===============================
+// ここから HTML に行(要素)を追加する処理
+// ===============================
+
+const box = document.createElement("div");
+box.id = "box";
+
+// 最初の文字列
+const result1 = document.createElement("p");
+result1.textContent = add(10, 5, 1).toString();
+
+// 追加の行
+const result2 = document.createElement("p");
+result2.textContent = "4545したいよねぇ";
+
+// box の中に追加
+box.appendChild(result1);
+box.appendChild(result2);
+
+document.body.appendChild(box);
+
+// ===============================
+// ここから削除ボタンを追加する処理（TSだけ）
+// ===============================
+
+// 削除ボタンを作る
+const btn = document.createElement("button");
+btn.textContent = "saisai";
+const box2 = document.createElement("div");
+box2.id = "box2";
+// body に追加
+const last = document.createElement("p");
+last.textContent = "削除";
+const img = document.createElement("img");
+img.src = "../img/sakuzyo.jpg";   // ← 画像の場所をここに書く
+img.alt = "サンプル画像";
+document.body.appendChild(btn);
+
+box2.appendChild(last);
+box2.appendChild(img);
+
+// ボタンが押されたら、box の中身を削除
+btn.addEventListener("click", () => {
+  // 最後の行を削除
+
+
+// body に追加
+document.body.appendChild(box2);
+});
+
+
+
+
