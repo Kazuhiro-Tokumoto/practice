@@ -20,3 +20,5 @@ tsc main.ts
 あ、変えるときは
 ## npx tsc
 ## で全部変わるぞ
+tsのままでいけるらしい
+npm run dev
