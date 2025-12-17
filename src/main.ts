@@ -1,197 +1,110 @@
-import { generateKeyPair,deriveSharedSecret } from "./mojyu-ru/crypto/ecdh.js";
-import { arrayBufferToBase64 , base64ToUint8Array,bufferToHex} from "./mojyu-ru/base64.js";
+import { generateKeyPair } from "./mojyu-ru/crypto/ecdh.js";
+import { arrayBufferToBase64, base64ToUint8Array, bufferToHex } from "./mojyu-ru/base64.js";
 import { generateSalt, combineSalts } from "./mojyu-ru/crypto/saltaes.js";
-import { handleDHMessage,  } from "./mojyu-ru/dh.js";
-import {dhs} from "./mojyu-ru/joins.js";
+import { handleDHMessage } from "./mojyu-ru/dh.js";
+import { dhs } from "./mojyu-ru/joins.js";
 import { deriveAesKeySafe } from "./mojyu-ru/crypto/kdf.js";
-import { decrypt,encrypt } from "./mojyu-ru/crypto/aes.js";
+import { decrypt, encrypt } from "./mojyu-ru/crypto/aes.js";
 
+// --- 1. UIの構築 (初期状態) ---
+const lobby = document.createElement("div");
+lobby.style.cssText = "text-align: center; padding: 20px; font-family: sans-serif;";
+const inputroom = document.createElement("input");
+inputroom.placeholder = "ルーム名を入力...";
+inputroom.style.cssText = "padding: 10px; border-radius: 5px; border: 1px solid #ccc;";
+const btnroom = document.createElement("button");
+btnroom.textContent = "参加";
+btnroom.style.cssText = "padding: 10px 20px; margin-left: 5px; cursor: pointer; background: #0084ff; color: white; border: none; border-radius: 5px;";
 
-// メッセージ送信用の関数
-async function sendEncryptedMessage(text: string,aeskey:any) {
-    const txt = `[送信]: ${text}` ;
-    if (!aeskey) {
-        console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
-        return;
-    }
+lobby.append(inputroom, btnroom);
+document.body.appendChild(lobby);
 
-    try {
-        // 1. 文字列をバイナリ(Uint8Array)に変換
-        const encoder = new TextEncoder();
-        const plaintext = encoder.encode(text);
-
-        // 2. AES-GCMで暗号化
-        // encrypt関数は { iv: Uint8Array, data: ArrayBuffer } を返す想定
-        const encrypted = await encrypt(aeskey, plaintext);
-
-        // 3. サーバーに送信
-        const msg = {
-            type: "message",
-            room: room,
-            name: name,
-            iv: arrayBufferToBase64(encrypted.iv), // IVをBase64化
-            data: arrayBufferToBase64(encrypted.data) // 暗号文をBase64化
-        };
-
-        wss.send(JSON.stringify(msg));
-        console.log(`%c[送信完了]: ${text}`, "color: #00bfff; font-weight: bold;");
-    } catch (e) {
-        console.error("送信時の暗号化に失敗しました:", e);
-    }
-            const p = document.createElement("p");
-            p.textContent = txt;
-            chatBox.appendChild(p);
-            chatBox.appendChild(br);
-}
-(window as any).sendMsg = sendEncryptedMessage;
-
-// ブラウザのコンソールから直接実行できるように globalThis (window) に登録
-
-const room:string = "test-room";
-let aeskey:any;
-const salt:  Uint8Array = generateSalt();
-const base64salt = arrayBufferToBase64(salt);
-const mykey = await generateKeyPair();
-const name = await bufferToHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(Math.random().toString())));
-let txt
-
-console.log(name);
-
-const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
-
-const wss:WebSocket = new WebSocket("wss://mail.shudo-physics.com:40000/");
-{ //gemini最強
-wss.onopen = () => {
-    wss.send(JSON.stringify({ type: "join", room: room, name: name.toString() }));
-            const p = document.createElement("p");
-            p.textContent = "参加しました";
-            chatBox.appendChild(p);
-            chatBox.appendChild(br);
-}
-wss.onmessage = async (event: MessageEvent) => {
-    const data = JSON.parse(event.data);
-    console.log("受信メッセージ:", data);
-    if (data.type === "join-broadcast") {
-            const p = document.createElement("p");
-            p.textContent = data.name + "が参加しました";
-            chatBox.appendChild(p);
-            chatBox.appendChild(br);
-    }
-    // 1. サーバーからの開始合図
-    if (data.type === "dh-start" || data.type === "join-broadcast") {
-        if (data.name === name) return; 
-
-        // dhs はオブジェクトを返すように修正済みの想定
-        const dhmsg = dhs(event, pubJwk, base64salt, name, room);
-        if (dhmsg) {
-            wss.send(JSON.stringify(dhmsg));
-            console.log("自分のDHを送信完了");
-        }
-    } 
-    
-    // 2. 相手から「DH（鍵情報）」が届いた場合
-    // ※ data の再宣言 (const data = ...) を削除しました
-    else if (data.type === "DH" && data.name !== name) {
-        try {
-            // 1. Saltのデコードと結合
-            const remoteSalt = base64ToUint8Array(data.salt);
-            const saltall = combineSalts(salt, remoteSalt);
-
-            // 2. handleDHMessage (dh.ts) を呼び出し
-            // 内部で importKey と deriveBits を一気に行う
-            const sharedSecret = await handleDHMessage(data, mykey.privateKey);
-            console.log("共有秘密(Shared Secret):", new Uint8Array(sharedSecret));
-            // 3. 最終的なAES鍵を生成
-            aeskey = await deriveAesKeySafe(sharedSecret, new Uint8Array(saltall));
-
-            console.log("✨✨ AES鍵が完成しました！", aeskey);
-        } catch (e) {
-            console.error("鍵交換エラー:", e);
-        }
-    }else if (data.type === "message" && data.name !== name) {
-        try {
-            if (!aeskey) {
-                console.warn("メッセージを受信しましたが、まだ鍵がありません。");
-                return;
-            }
-
-            // Base64からバイナリに戻す
-            const iv = base64ToUint8Array(data.iv);
-            const encryptedContent = base64ToUint8Array(data.data);
-
-            // 復号
-            const decryptedArray = await decrypt(aeskey, iv, encryptedContent.buffer as ArrayBuffer);
-            const messageText = new TextDecoder().decode(decryptedArray);
-
-            txt = `[受信]: ${messageText}`, "color: #00ff00; font-weight: bold;"
-            const p = document.createElement("p");
-            p.textContent = txt;
-            chatBox.appendChild(p);
-            chatBox.appendChild(br);
-
-
-            console.log(`%c[受信]: ${messageText}`, "color: #00ff00; font-weight: bold;");
-        } catch (e) {
-            console.error("復号に失敗しました。鍵が一致していない可能性があります:", e);
-        }
-    }
-};
-}
-
-// 以下、簡易的なUIのセットアップ（HTMLがない場合の代替手段）
-
-// 1. input要素を作成
+// チャットエリア（最初は隠す）
+const chatArea = document.createElement("div");
+chatArea.style.display = "none";
 const chatBox = document.createElement("div");
-chatBox.id = "chatBox";
-chatBox.style.cssText = `
-    width: 95%;
-    max-width: 600px;
-    height: 60vh; /* スマホでキーボードが出ても大丈夫な高さ */
-    border: 1px solid #ddd;
-    background-color: #f0f2f5;
-    overflow-y: auto;
-    padding: 15px;
-    margin: 10px auto;
-    display: flex;
-    flex-direction: column;
-    font-family: sans-serif;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-`;
-document.body.appendChild(chatBox);
-
-// 2. 入力エリア
+chatBox.style.cssText = "width: 95%; max-width: 600px; height: 60vh; border: 1px solid #ddd; background: #f9f9f9; overflow-y: auto; padding: 15px; margin: 10px auto; display: flex; flex-direction: column; border-radius: 10px;";
 const inputContainer = document.createElement("div");
 inputContainer.style.cssText = "width: 95%; max-width: 600px; margin: 0 auto; display: flex; gap: 5px;";
-
-const input = document.createElement("input");
-input.placeholder = "メッセージを入力...";
-input.style.cssText = "flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; outline: none; font-size: 16px;";
-
+const inputMsg = document.createElement("input");
+inputMsg.style.cssText = "flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc;";
 const sendBtn = document.createElement("button");
 sendBtn.textContent = "送信";
-sendBtn.style.cssText = "padding: 10px 20px; border-radius: 20px; border: none; background: #0084ff; color: white; font-weight: bold; cursor: pointer;";
+sendBtn.style.cssText = "padding: 10px 20px; border-radius: 20px; background: #0084ff; color: white; border: none;";
 
-inputContainer.appendChild(input);
-inputContainer.appendChild(sendBtn);
-document.body.appendChild(inputContainer);
-const br = document.createElement("br");
+inputContainer.append(inputMsg, sendBtn);
+chatArea.append(chatBox, inputContainer);
+document.body.appendChild(chatArea);
 
+// --- 2. 暗号化・通信用変数 ---
+let wss: WebSocket;
+let roomName: string;
+let aeskey: CryptoKey | null = null;
+const mySalt = generateSalt();
+const myKeyPair = await generateKeyPair();
+const myName = await bufferToHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(Math.random().toString())));
+const pubJwk = await crypto.subtle.exportKey("jwk", myKeyPair.publicKey);
 
-// 3. クリックイベント（作成した変数をそのまま使うのが楽です）
-sendBtn.addEventListener("click", async () => {
-    // input 変数をそのまま使えるので getElementById は不要
-    if (input.value) {
-        await sendEncryptedMessage(input.value,aeskey);
-        input.value = ""; // 送信後に中身を空にする
+// --- 3. メッセージ表示ヘルパー ---
+const addUI = (text: string, type: 'me' | 'other' | 'system', sender = "") => {
+    const div = document.createElement("div");
+    if (type === 'system') {
+        div.style.cssText = "align-self: center; color: #888; font-size: 0.8em; margin: 5px;";
+        div.textContent = text;
+    } else {
+        const isMe = type === 'me';
+        div.style.cssText = `align-self: ${isMe ? "flex-end" : "flex-start"}; background: ${isMe ? "#0084ff" : "#eee"}; color: ${isMe ? "#fff" : "#000"}; padding: 8px 12px; margin: 4px; border-radius: 15px; max-width: 80%;`;
+        div.textContent = (isMe ? "" : sender.substring(0, 5) + ": ") + text;
     }
-});
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+};
 
-// オマケ：Enterキーでも送れるようにする
-input.addEventListener("keypress", async (e) => {
-    if (e.key === "Enter" && input.value) {
-        await sendEncryptedMessage(input.value,aeskey);
-        input.value = "";
-    }
-});
-chatBox.scrollTop = chatBox.scrollHeight;
+// --- 4. 参加ボタンイベント ---
+btnroom.onclick = () => {
+    roomName = inputroom.value.trim() || "default-room";
+    lobby.style.display = "none";
+    chatArea.style.display = "block";
+    
+    wss = new WebSocket("wss://mail.shudo-physics.com:40000/");
+    
+    wss.onopen = () => {
+        wss.send(JSON.stringify({ type: "join", room: roomName, name: myName }));
+        addUI(`ルーム「${roomName}」に参加中...`, 'system');
+    };
+
+    wss.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === "join-broadcast" && data.name !== myName) {
+            addUI(`${data.name.substring(0, 5)}が参加`, 'system');
+            const dhmsg = dhs(event, pubJwk, arrayBufferToBase64(mySalt), myName, roomName);
+            if (dhmsg) wss.send(JSON.stringify(dhmsg));
+        } 
+        else if (data.type === "DH" && data.name !== myName) {
+            const sharedSecret = await handleDHMessage(data, myKeyPair.privateKey);
+            const saltall = combineSalts(mySalt, base64ToUint8Array(data.salt));
+            aeskey = await deriveAesKeySafe(sharedSecret, new Uint8Array(saltall));
+            addUI("🔒 暗号化が有効になりました", 'system');
+        } 
+        else if (data.type === "message" && data.name !== myName) {
+            if (!aeskey) return;
+            const decrypted = await decrypt(aeskey, base64ToUint8Array(data.iv), base64ToUint8Array(data.data).buffer as ArrayBuffer);
+            addUI(new TextDecoder().decode(decrypted), 'other', data.name);
+        }
+    };
+};
+
+// --- 5. 送信イベント ---
+sendBtn.onclick = async () => {
+    if (!inputMsg.value || !aeskey) return;
+    const text = inputMsg.value;
+    const encrypted = await encrypt(aeskey, new TextEncoder().encode(text));
+    wss.send(JSON.stringify({
+        type: "message", room: roomName, name: myName,
+        iv: arrayBufferToBase64(encrypted.iv),
+        data: arrayBufferToBase64(encrypted.data)
+    }));
+    addUI(text, 'me');
+    inputMsg.value = "";
+};
