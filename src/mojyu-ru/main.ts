@@ -71,7 +71,6 @@ const salt: Uint8Array = generateSalt();
 const base64salt = arrayBufferToBase64(salt);
 const mykey = await generateKeyPair();
 const name = await bufferToHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(Math.random().toString())));
-let txt;
 console.log(name);
 const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
 
@@ -107,7 +106,7 @@ btnroom.addEventListener("click", () => {
     roomSelection.style.display = "none";
     chatContainer.style.display = "flex";
 
-    wss = new WebSocket("wss://mail.shudo-physics.com:40000/");
+    wss = new WebSocket("wss://mail.shudo-physics.com/");
 
     wss.onopen = () => {
         wss.send(JSON.stringify({ type: "join", room: room, name: name.toString() }));
