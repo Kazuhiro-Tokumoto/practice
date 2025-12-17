@@ -7,6 +7,7 @@ import { deriveAesKeySafe } from "./crypto/kdf.js";
 import { decrypt, encrypt } from "./crypto/aes.js";
 export async function main() {
     // --- 1. UIスタイル設定 (Messenger風) ---
+    // --- 1. UIスタイル設定 ---
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
     const roomSelection = document.createElement("div");
     roomSelection.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;";
@@ -65,7 +66,6 @@ export async function main() {
     console.log(name);
     const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
     async function sendEncryptedMessage(text, aeskey) {
-        const txt = `[送信]: ${text}`;
         if (!aeskey) {
             console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
             return;
@@ -100,12 +100,17 @@ export async function main() {
         wss = new WebSocket("wss://mail.shudo-physics.com:40000/");
         wss.onopen = () => {
             wss.send(JSON.stringify({ type: "join", room: room, name: name.toString() }));
-            addSystemMsg("参加しました");
+            // ここでの「参加しました」表示を削除し、onmessageのackを待つように変更
         };
         wss.onmessage = async (event) => {
             const data = JSON.parse(event.data);
             console.log("受信メッセージ:", data);
-            // 退出通知の処理 (leave-broadcast を追加)
+            if (data.type === "join-ack") {
+                addSystemMsg("参加しました");
+            }
+            if (data.type === "join-nack") {
+                addSystemMsg("エラー: ルームに参加できませんでした");
+            }
             if (data.type === "quit-broadcast" || data.type === "leave" || data.type === "leave-broadcast") {
                 addSystemMsg((data.name ? data.name.substring(0, 8) : "誰か") + "が退出しました");
             }
