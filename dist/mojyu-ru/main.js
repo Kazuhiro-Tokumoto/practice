@@ -55,7 +55,7 @@ export async function main() {
         chatBox.scrollTop = chatBox.scrollHeight;
     }
     // --- 2. 既存ロジック変数 ---
-    let wss;
+    let wss = new WebSocket("wss://mail.shudo-physics.com/");
     let room;
     let aeskey;
     const salt = generateSalt();

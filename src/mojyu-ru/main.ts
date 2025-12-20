@@ -64,7 +64,7 @@ function addSystemMsg(msg: string) {
 }
 
 // --- 2. 既存ロジック変数 ---
-let wss: WebSocket;
+let wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
 let room: string;
 let aeskey: any;
 const salt: Uint8Array = generateSalt();
