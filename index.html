@@ -37,7 +37,7 @@
         const { error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: 'https://kazuhiro-tokumoto.github.io/practice/index.html'
+                redirectTo: window.location.href 
             }
         });
         if (error) alert('Error: ' + error.message);
