@@ -72,7 +72,7 @@
         const statusDiv = document.getElementById('status');
         
         // ラズパイのサーバーへ接続
-        const socket = new WebSocket('wss://mail.shudo-physics.com:40000');
+        const socket = new WebSocket('wss://mail.shudo-physics.com:443');
 
         socket.onopen = () => {
             statusDiv.innerHTML += `\n<span class="success">✅ WSS接続成功</span>`;
