@@ -1,11 +1,13 @@
 import { generateKeyPair } from "./crypto/ecdh.js";
-import { arrayBufferToBase64, base64ToUint8Array, bufferToHex } from "./base64.js";
+import { arrayBufferToBase64, base64ToUint8Array } from "./base64.js";
 import { generateSalt, combineSalts } from "./crypto/saltaes.js";
 import { handleDHMessage } from "./dh.js";
 import { dhs } from "./joins.js";
 import { deriveAesKeySafe } from "./crypto/kdf.js";
 import { decrypt, encrypt } from "./crypto/aes.js";
 export async function main() {
+    // 1. 変数名を 'name' から 'myDisplayName' などに変更
+    // 2. localStorage からの取得時に null を回避する (?? "")
     // --- 1. UIスタイル設定 (Messenger風) ---
     // --- 1. UIスタイル設定 ---
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
@@ -40,6 +42,32 @@ export async function main() {
     inputContainer.append(input, sendBtn);
     chatContainer.append(chatHeader, chatBox, inputContainer);
     document.body.appendChild(chatContainer);
+    // 1. 変数名を 'name' から 'myDisplayName' などに変更
+    // 2. localStorage からの取得時に null を回避する (?? "")
+    let myDisplayName = "不明なユーザー";
+    const storedToken = localStorage.getItem("my_token") ?? "";
+    const storedUuid = localStorage.getItem("my_uuid") ?? "";
+    myDisplayName = localStorage.getItem("my_name") ?? "不明なユーザー";
+    // 3. 型チェック（空文字＝ログインしていない）
+    if (storedToken === "") {
+        window.location.href = "../index.html";
+    }
+    else {
+        // WebSocket送信部分
+        btnroom.addEventListener("click", () => {
+            const wss = new WebSocket("wss://mail.shudo-physics.com");
+            wss.onopen = () => {
+                const payload = {
+                    type: "join",
+                    room: document.getElementById('inputroom').value || "default",
+                    name: myDisplayName, // ここを 'name' ではなく変更した変数にする
+                    uuid: storedUuid,
+                    token: storedToken
+                };
+                wss.send(JSON.stringify(payload));
+            };
+        });
+    }
     function addBubble(text, isMe) {
         const bubble = document.createElement("div");
         bubble.style.cssText = `max-width: 70%; padding: 8px 15px; border-radius: 18px; font-size: 15px; align-self: ${isMe ? "flex-end" : "flex-start"}; background-color: ${isMe ? "#0084ff" : "#e4e6eb"}; color: ${isMe ? "white" : "#050505"}; ${isMe ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"}`;
@@ -54,16 +82,16 @@ export async function main() {
         chatBox.appendChild(p);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
+    // --- ★ 保管庫から「ブツ」を取り出す ---
     // --- 2. 既存ロジック変数 ---
-    let wss = new WebSocket("wss://mail.shudo-physics.com/");
+    let wss = new WebSocket('wss://mail.shudo-physics.com/');
     let room;
     let aeskey;
     const salt = generateSalt();
     const base64salt = arrayBufferToBase64(salt);
     const mykey = await generateKeyPair();
-    const name = await bufferToHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(Math.random().toString())));
-    console.log(name);
     const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
+    let name = myDisplayName;
     async function sendEncryptedMessage(text, aeskey) {
         if (!aeskey) {
             console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
@@ -88,7 +116,7 @@ export async function main() {
     }
     window.addEventListener("beforeunload", () => {
         if (wss && wss.readyState === WebSocket.OPEN) {
-            wss.send(JSON.stringify({ type: "leave", room: room, name: name.toString() }));
+            wss.send(JSON.stringify({ type: "leave", room: room, name: name }));
         }
     });
     btnroom.addEventListener("click", () => {
@@ -98,7 +126,7 @@ export async function main() {
         chatContainer.style.display = "flex";
         wss = new WebSocket("wss://mail.shudo-physics.com/");
         wss.onopen = () => {
-            wss.send(JSON.stringify({ type: "join", room: room, name: name.toString() }));
+            wss.send(JSON.stringify({ type: "join", room: room, name: name, uuid: storedUuid, token: storedToken }));
             // ここでの「参加しました」表示を削除し、onmessageのackを待つように変更
         };
         wss.onmessage = async (event) => {

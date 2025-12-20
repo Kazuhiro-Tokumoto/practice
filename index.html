@@ -43,8 +43,7 @@
         location.reload();
     }
 
-    // --- メイン処理 ---
-    async function init() {
+async function init() {
         const statusDiv = document.getElementById('status');
         const authUi = document.getElementById('auth-ui');
 
@@ -58,56 +57,24 @@
 
         if (session) {
             const user = session.user;
-            statusDiv.innerHTML = `<span class="success">✅ Supabaseログイン中</span>\nName: ${user.user_metadata.full_name}\nUUID: ${user.id}\n\nWebSocket接続を試行中...`;
-            authUi.innerHTML = `<button class="btn-logout" onclick="signOut()">ログアウト</button>`;
+            
+            // --- ★ ここが重要：データを「保持」して「転送」 ---
+            
+            // 1. ブラウザの保管庫(localStorage)にカギを詰め込む
+            localStorage.setItem("my_token", session.access_token);
+            localStorage.setItem("my_uuid", user.id);
+            localStorage.setItem("my_name", user.user_metadata.full_name || "不明なユーザー");
 
-            // 2. ログイン成功していたらWebSocketを開始
-            startWss(session, user);
+            statusDiv.innerHTML = `<span class="success">✅ 認証成功！チャット画面へ移動します...</span>`;
+            
+            // 2. 0.5秒後くらいにチャット画面へ転送（少し待つとユーザーが安心します）
+            setTimeout(() => {
+                window.location.href = "./dist/index.html";
+            }, 500);
+
         } else {
             statusDiv.innerText = 'ステータス: 未ログイン';
         }
-    }
-
-    function startWss(session, user) {
-        const statusDiv = document.getElementById('status');
-        
-        // ラズパイのサーバーへ接続
-        const socket = new WebSocket('wss://mail.shudo-physics.com');
-
-        socket.onopen = () => {
-            statusDiv.innerHTML += `\n<span class="success">✅ WSS接続成功</span>`;
-            
-            // サーバーが待っている「join」メッセージを送る
-            const joinMsg = {
-                type: "join",
-                room: "test-room",
-                name: user.user_metadata.full_name || "不明なユーザー",
-                uuid: user.id,
-                token: session.access_token // ラズパイ側で検証用
-            };
-            
-            socket.send(JSON.stringify(joinMsg));
-            statusDiv.innerHTML += `\n認証情報を送信しました。`;
-        };
-
-        socket.onmessage = (event) => {
-            const msg = JSON.parse(event.data);
-            console.log("サーバーからの受信:", msg);
-            statusDiv.innerHTML += `\n受信: ${msg.type}`;
-            
-            if (msg.type === "join-ack") {
-                statusDiv.innerHTML += `\n<span class="success">🚀 サーバー認証完了！準備OK</span>`;
-            }
-        };
-
-        socket.onclose = (e) => {
-            statusDiv.innerHTML += `\n<span class="error">❌ WSS切断されました (Code: ${e.code})</span>`;
-        };
-
-        socket.onerror = (err) => {
-            statusDiv.innerHTML += `\n<span class="error">⚠️ WSSエラーが発生しました</span>`;
-            console.error("WSS Error:", err);
-        };
     }
 
     // 起動

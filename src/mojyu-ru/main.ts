@@ -7,6 +7,8 @@ import { deriveAesKeySafe } from "./crypto/kdf.js";
 import { decrypt, encrypt } from "./crypto/aes.js";
 export async function main(){
 
+// 1. 変数名を 'name' から 'myDisplayName' などに変更
+// 2. localStorage からの取得時に null を回避する (?? "")
 
 // --- 1. UIスタイル設定 (Messenger風) ---
 
@@ -46,6 +48,33 @@ sendBtn.style.cssText = "background: none; border: none; color: #0084ff; font-we
 inputContainer.append(input, sendBtn);
 chatContainer.append(chatHeader, chatBox, inputContainer);
 document.body.appendChild(chatContainer);
+// 1. 変数名を 'name' から 'myDisplayName' などに変更
+// 2. localStorage からの取得時に null を回避する (?? "")
+let myDisplayName = "不明なユーザー";
+const storedToken = localStorage.getItem("my_token") ?? "";
+const storedUuid = localStorage.getItem("my_uuid") ?? "";
+myDisplayName = localStorage.getItem("my_name") ?? "不明なユーザー";
+
+// 3. 型チェック（空文字＝ログインしていない）
+if (storedToken === "") {
+    window.location.href = "../index.html";
+} else {
+    // WebSocket送信部分
+    btnroom.addEventListener("click", () => {
+        const wss = new WebSocket("wss://mail.shudo-physics.com");
+
+        wss.onopen = () => {
+            const payload = {
+                type: "join",
+                room: (document.getElementById('inputroom') as HTMLInputElement).value || "default",
+                name: myDisplayName, // ここを 'name' ではなく変更した変数にする
+                uuid: storedUuid,
+                token: storedToken
+            };
+            wss.send(JSON.stringify(payload));
+        };
+    });
+}
 
 function addBubble(text: string, isMe: boolean) {
     const bubble = document.createElement("div");
@@ -63,16 +92,19 @@ function addSystemMsg(msg: string) {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+
+    // --- ★ 保管庫から「ブツ」を取り出す ---
+
+
 // --- 2. 既存ロジック変数 ---
-let wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
+let wss: WebSocket = new WebSocket('wss://mail.shudo-physics.com/');
 let room: string;
 let aeskey: any;
 const salt: Uint8Array = generateSalt();
 const base64salt = arrayBufferToBase64(salt);
 const mykey = await generateKeyPair();
-const name = await bufferToHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(Math.random().toString())));
-console.log(name);
 const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
+let name: string = myDisplayName;
 
 async function sendEncryptedMessage(text: string, aeskey: any) {
     if (!aeskey) {
@@ -96,7 +128,7 @@ async function sendEncryptedMessage(text: string, aeskey: any) {
 
 window.addEventListener("beforeunload", () => {
     if (wss && wss.readyState === WebSocket.OPEN) {
-        wss.send(JSON.stringify({ type: "leave", room: room, name: name.toString() }));
+        wss.send(JSON.stringify({ type: "leave", room: room, name: name }));
     }
 });
 
@@ -109,7 +141,7 @@ btnroom.addEventListener("click", () => {
     wss = new WebSocket("wss://mail.shudo-physics.com/");
 
     wss.onopen = () => {
-        wss.send(JSON.stringify({ type: "join", room: room, name: name.toString() }));
+        wss.send(JSON.stringify({ type: "join", room: room, name: name,uuid: storedUuid,token: storedToken }));
         // ここでの「参加しました」表示を削除し、onmessageのackを待つように変更
     }
 
@@ -168,5 +200,6 @@ sendBtn.addEventListener("click", async () => {
 });
 input.addEventListener("keypress", async (e) => {
     if (e.key === "Enter" && input.value) { await sendEncryptedMessage(input.value, aeskey); input.value = ""; }
+    
 });
 }
