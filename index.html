@@ -2,45 +2,40 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Googlelogin test</title>
+    <title>Google Login & Raspberry Pi WSS</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #eef2f3; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 90%; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #eef2f3; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 450px; width: 90%; }
         h2 { color: #333; margin-bottom: 20px; }
-        .btn-google { background: #4285F4; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; width: 100%; }
-        .btn-google:hover { background: #357ae8; transform: translateY(-2px); }
-        .btn-logout { background: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-top: 20px; font-size: 14px; }
-        #status { margin-top: 25px; padding: 15px; background: #f9f9f9; border-radius: 8px; font-family: monospace; word-break: break-all; text-align: left; font-size: 13px; border: 1px solid #ddd; }
-        .success-text { color: #2e7d32; font-weight: bold; text-align: center; display: block; margin-bottom: 10px; }
+        .btn-google { background: #4285F4; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; margin-bottom: 10px; }
+        .btn-logout { background: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-top: 20px; }
+        #status { margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; text-align: left; font-size: 13px; border: 1px solid #ddd; white-space: pre-wrap; }
+        .success { color: #2e7d32; font-weight: bold; }
+        .error { color: #d32f2f; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>My Chat App</h2>
+    <h2>My Chat App (WSS Test)</h2>
     <div id="auth-ui">
-        <button class="btn-google" onclick="signIn()">Googleでログイン / 登録</button>
+        <button class="btn-google" onclick="signIn()">Googleでログイン</button>
     </div>
-    <div id="status">ステータス: 読み込み中...</div>
+    <div id="status">ステータス: 初期化中...</div>
 </div>
 
 <script>
-    // 提供された情報を使用
     const SUPABASE_URL = 'https://cedpfdoanarzyxcroymc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i';
     
-    // Supabaseクライアントの初期化
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     async function signIn() {
-        const { error } = await supabaseClient.auth.signInWithOAuth({
+        await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
-            options: {
-                redirectTo: 'https://kazuhiro-tokumoto.github.io/practice/'
-            }
+            options: { redirectTo: window.location.href }
         });
-        if (error) alert('Error: ' + error.message);
     }
 
     async function signOut() {
@@ -48,28 +43,77 @@
         location.reload();
     }
 
-    async function checkUser() {
-        const { data: { session } } = await supabaseClient.auth.getSession();
+    // --- メイン処理 ---
+    async function init() {
         const statusDiv = document.getElementById('status');
         const authUi = document.getElementById('auth-ui');
-        
+
+        // 1. セッション（ログイン状態）の取得
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+
+        if (error) {
+            statusDiv.innerHTML = `<span class="error">Authエラー: ${error.message}</span>`;
+            return;
+        }
+
         if (session) {
             const user = session.user;
-            statusDiv.innerHTML = `
-                <span class="success-text">✅ ログイン中</span>
-                <strong>UUID:</strong><br>${user.id}<br><br>
-                <strong>Name:</strong> ${user.user_metadata.full_name}<br>
-                <strong>Email:</strong> ${user.email}
-            `;
+            statusDiv.innerHTML = `<span class="success">✅ Supabaseログイン中</span>\nName: ${user.user_metadata.full_name}\nUUID: ${user.id}\n\nWebSocket接続を試行中...`;
             authUi.innerHTML = `<button class="btn-logout" onclick="signOut()">ログアウト</button>`;
-            console.log('ログイン成功:', user);
+
+            // 2. ログイン成功していたらWebSocketを開始
+            startWss(session, user);
         } else {
-            statusDiv.innerText = 'ステータス: 未ログイン（ボタンを押してください）';
+            statusDiv.innerText = 'ステータス: 未ログイン';
         }
     }
 
-    checkUser();
+    function startWss(session, user) {
+        const statusDiv = document.getElementById('status');
+        
+        // ラズパイのサーバーへ接続
+        const socket = new WebSocket('wss://mail.shudo-physics.com:40000');
+
+        socket.onopen = () => {
+            statusDiv.innerHTML += `\n<span class="success">✅ WSS接続成功</span>`;
+            
+            // サーバーが待っている「join」メッセージを送る
+            const joinMsg = {
+                type: "join",
+                room: "test-room",
+                name: user.user_metadata.full_name || "不明なユーザー",
+                uuid: user.id,
+                token: session.access_token // ラズパイ側で検証用
+            };
+            
+            socket.send(JSON.stringify(joinMsg));
+            statusDiv.innerHTML += `\n認証情報を送信しました。`;
+        };
+
+        socket.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+            console.log("サーバーからの受信:", msg);
+            statusDiv.innerHTML += `\n受信: ${msg.type}`;
+            
+            if (msg.type === "join-ack") {
+                statusDiv.innerHTML += `\n<span class="success">🚀 サーバー認証完了！準備OK</span>`;
+            }
+        };
+
+        socket.onclose = (e) => {
+            statusDiv.innerHTML += `\n<span class="error">❌ WSS切断されました (Code: ${e.code})</span>`;
+        };
+
+        socket.onerror = (err) => {
+            statusDiv.innerHTML += `\n<span class="error">⚠️ WSSエラーが発生しました</span>`;
+            console.error("WSS Error:", err);
+        };
+    }
+
+    // 起動
+    init();
 </script>
+
 <a href="./dist/index.html">chat test</a>
 </body>
 </html>
