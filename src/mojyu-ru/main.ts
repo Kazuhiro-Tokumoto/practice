@@ -66,7 +66,7 @@ if (storedToken === "") {
         wss.onopen = () => {
             const payload = {
                 type: "join",
-                room: (document.getElementById('inputroom') as HTMLInputElement).value || "default",
+               room: inputroom.value || "default",
                 name: myDisplayName, // ここを 'name' ではなく変更した変数にする
                 uuid: storedUuid,
                 token: storedToken
