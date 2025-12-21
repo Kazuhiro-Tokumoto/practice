@@ -24,6 +24,7 @@
     "undici-types": "^7.16.0"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.89.0",
     "ws": "^8.18.3"
   }
 }

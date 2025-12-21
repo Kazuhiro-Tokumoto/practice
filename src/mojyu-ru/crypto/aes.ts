@@ -36,3 +36,28 @@ export async function decrypt(
 
     return new Uint8Array(plain);
 }
+
+export async function deriveKeyFromPin(pin: string, salt: Uint8Array) {
+  // 6桁の数字をバイナリに変換
+  const enc = new TextEncoder();
+  const pinData = enc.encode(pin);
+
+  // パスワードをインポート（PBKDF2用）
+  const baseKey = await crypto.subtle.importKey(
+    "raw", pinData, "PBKDF2", false, ["deriveKey"]
+  );
+
+  // ソルトを混ぜて、AES-GCM用の256ビット鍵を作る
+  return await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: salt as BufferSource,
+      iterations: 100000, // 10万回回して強度を上げる
+      hash: "SHA-256"
+    },
+    baseKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
