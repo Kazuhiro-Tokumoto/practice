@@ -1,22 +1,27 @@
-import { createClient } from '@supabase/supabase-js';
-// 初期化（ここはマインさんの既存コード通り）
-const myUuid = localStorage.getItem("my_uuid");
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
 const supabaseUrl = 'https://cedpfdoanarzyxcroymc.supabase.co';
 const supabaseKey = 'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i';
 export const supabase = createClient(supabaseUrl, supabaseKey);
-export async function checkUserOnline(targetUuid) {
+
+// 全ユーザーを一覧取得してコンソールに表示する関数
+export async function checkUserOnline() {
     const { data, error } = await supabase
         .from('profile_users')
-        .select('is_active, name')
-        .eq('uuid', targetUuid)
-        .single(); // 1件だけ取得
+        .select('uuid, is_active, email, username')
+        .order('created_at', { ascending: false }); // 新しい順に並べる
+
     if (error) {
-        console.error("状態取得エラー:", error.message);
-        return false;
+        console.error("全ユーザー取得エラー:", error.message);
+        return [];
     }
-    if (data) {
-        console.log(`${data.name} さんの状態: ${data.is_active ? "オンライン" : "オフライン"}`);
-        return data.is_active;
-    }
-    return false;
+
+    console.log("=== 全ユーザー一覧 ===");
+    data.forEach(user => {
+        const name = user.username || user.email || "不明";
+        const status = user.is_active ? "🟢 オンライン" : "⚪ オフライン";
+        console.log(`[${status}] 名前: ${name} | UUID: ${user.uuid}`);
+    });
+
+    return data;
 }

@@ -1,5 +1,6 @@
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 // 初期化（ここはマインさんの既存コード通り）
 const myUuid = localStorage.getItem("my_uuid"); 
