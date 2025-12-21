@@ -76,13 +76,27 @@ if (storedToken === "") {
     });
 }
 
-function addBubble(text: string, isMe: boolean) {
-    const bubble = document.createElement("div");
-    bubble.style.cssText = `max-width: 70%; padding: 8px 15px; border-radius: 18px; font-size: 15px; align-self: ${isMe ? "flex-end" : "flex-start"}; background-color: ${isMe ? "#0084ff" : "#e4e6eb"}; color: ${isMe ? "white" : "#050505"}; ${isMe ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"}`;
-    bubble.textContent = text;
-    chatBox.appendChild(bubble);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
+function addBubble(text, isMe) {
+        const bubble = document.createElement("div");
+        bubble.style.cssText = `
+            max-width: 70%; 
+            padding: 8px 15px; 
+            border-radius: 18px; 
+            font-size: 15px; 
+            align-self: ${isMe ? "flex-end" : "flex-start"}; 
+            background-color: ${isMe ? "#0084ff" : "#e4e6eb"}; 
+            color: ${isMe ? "white" : "#050505"}; 
+            ${isMe ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"};
+            
+            /* --- ここから下が追加分 --- */
+            word-break: break-all;      /* 枠の端で強制的に改行させる */
+            overflow-wrap: break-word;  /* 長い単語をはみ出させない */
+            white-space: pre-wrap;      /* 改行やスペースを維持する */
+        `;
+        bubble.textContent = text;
+        chatBox.appendChild(bubble);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
 
 function addSystemMsg(msg: string) {
     const p = document.createElement("div");
