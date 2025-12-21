@@ -1,0 +1,1 @@
+npx tsc server.ts --target esnext --module esnext --moduleResolution node --allowSyntheticDefaultImports true --outDir . --esModuleInterop --skipLibCheck true
