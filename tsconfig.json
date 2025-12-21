@@ -2,15 +2,17 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "bundler", // ブラウザ用ならここがbundlerだと安定します
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM"],
+    "types": ["node"], // Bufferなどのエラー対策
+
+    "strict": false,   // 開発中は一旦 false にして、まずは動かすことを優先！
+    "skipLibCheck": true, // これが Supabase の内部エラーを無視する魔法の言葉です
     "esModuleInterop": true,
-    "skipLibCheck": true,     // ★ライブラリ（Supabase）内のエラーを無視
-    "lib": ["ESNext", "DOM"], // ★ブラウザ環境であることを教える
-    "strict": false,          // ★チェックを緩める
-    "baseUrl": ".",
-    "paths": {
-      "*": ["node_modules/*"]
-    }
+    "allowSyntheticDefaultImports": true,
+
+    "rootDir": "./src",
+    "outDir": "./dist"
   },
-  "include": ["src"]
+  "include": ["src"],
 }
