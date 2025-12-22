@@ -120,6 +120,7 @@ const mykey = await generateKeyPair();
 const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
 let name: string = myDisplayName;
 
+
 async function sendEncryptedMessage(text: string, aeskey: any) {
     if (!aeskey) {
         console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
@@ -128,17 +129,35 @@ async function sendEncryptedMessage(text: string, aeskey: any) {
     try {
         const encoder = new TextEncoder();
         const plaintext = encoder.encode(text);
+        
+        // 1. 暗号化（ここは元から async）
         const encrypted = await encrypt(aeskey, plaintext);
+
+        // 2. Base64変換（ここを高速版の await に書き換え！）
+        // iv と data の両方を並列で変換するとさらに効率がいいよ
+        const [ivB64, dataB64] = await Promise.all([
+            arrayBufferToBase64(encrypted.iv),
+            arrayBufferToBase64(encrypted.data)
+        ]);
+
         const msg = {
-            type: "message", room: room, name: name,
-            iv: arrayBufferToBase64(encrypted.iv),
-            data: arrayBufferToBase64(encrypted.data)
+            type: "message", 
+            room: room, 
+            name: name,
+            iv: ivB64,   // 変換後の値を入れる
+            data: dataB64 // 変換後の値を入れる
         };
+
+        // 3. 送信
         wss.send(JSON.stringify(msg));
+        
         console.log(`%c[送信完了]: ${text}`, "color: #00bfff; font-weight: bold;");
         addBubble(text, true);
-    } catch (e) { console.error("送信時の暗号化に失敗しました:", e); }
+    } catch (e) { 
+        console.error("送信時の暗号化に失敗しました:", e); 
+    }
 }
+
 
 window.addEventListener("beforeunload", () => {
     if (wss && wss.readyState === WebSocket.OPEN) {
