@@ -19,9 +19,10 @@ export async function arrayBufferToBase64(buf: ArrayBuffer | Uint8Array): Promis
  * Base64 文字列を Uint8Array に変換する
  */
 export async function base64ToUint8Array(b64: string): Promise<Uint8Array> {
-  const res = await fetch(`data:application/octet-stream;base64,${b64}`);
-  return new Uint8Array(await res.arrayBuffer());
+    const res = await fetch(`data:application/octet-stream;base64,${b64}`);
+    return new Uint8Array(await res.arrayBuffer());
 }
+
 
 
 export function bufferToHex(buffer: ArrayBuffer): string {

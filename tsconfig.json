@@ -3,16 +3,19 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ESNext", "DOM"],
-    "types": ["node"], // Bufferなどのエラー対策
+    "jsx": "react-jsx",          /* 【必須】Reactの書き方を許可する */
+    "lib": ["ESNext", "DOM", "DOM.Iterable"], /* Reactの型定義に必要 */
+    "types": ["node"],
 
-    "strict": false,   // 開発中は一旦 false にして、まずは動かすことを優先！
-    "skipLibCheck": true, // これが Supabase の内部エラーを無視する魔法の言葉です
+    "strict": false,
+    "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
 
     "rootDir": "./src",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "noEmit": true,              /* 【重要】Viteがビルドするのでtscはファイルを出さない */
+    "allowImportingTsExtensions": true /* .ts を直接 import している場合のエラー防止 */
   },
   "include": ["src"],
 }

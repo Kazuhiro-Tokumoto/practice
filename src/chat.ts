@@ -1,4 +1,4 @@
-import {main} from "./mojyu-ru/main.js";
+import {main} from "./main.jsx";
 
 main();
 
