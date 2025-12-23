@@ -2,18 +2,16 @@
  * ArrayBuffer を Base64 文字列に変換する（最速版）
  */
 export async function arrayBufferToBase64(buf: ArrayBuffer | Uint8Array): Promise<string> {
-  const blob = new Blob([buf]);
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // "data:...;base64,xxxx" のカンマ以降を切り出す
-      const base64 = result.substring(result.indexOf(",") + 1);
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+    const uint8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    const blob = new Blob([new Uint8Array(uint8)]);
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]);
+        };
+        reader.readAsDataURL(blob);
+    });
 }
 
 

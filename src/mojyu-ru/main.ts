@@ -1,5 +1,5 @@
 import { generateKeyPair, deriveSharedSecret } from "./crypto/ecdh.js";
-import { bufferToHex } from "./base64.js"; // 16進数変換のみ残す
+import { bufferToHex,arrayBufferToBase64 } from "./base64.js"; // 16進数変換のみ残す
 import { generateSalt, combineSalts } from "./crypto/saltaes.js";
 import { handleDHMessage } from "./dh.js";
 import { dhs } from "./joins.js";
@@ -9,17 +9,6 @@ import { decrypt, encrypt } from "./crypto/aes.js";
 /**
  * --- 最速版 Base64 変換 (ブラウザネイティブAPI活用) ---
  */
-async function arrayBufferToBase64(buf: ArrayBuffer | Uint8Array): Promise<string> {
-    const blob = new Blob([buf]);
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(",")[1]);
-        };
-        reader.readAsDataURL(blob);
-    });
-}
 
 async function base64ToUint8Array(b64: string): Promise<Uint8Array> {
     const res = await fetch(`data:application/octet-stream;base64,${b64}`);
