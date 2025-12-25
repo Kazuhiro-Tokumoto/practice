@@ -167,6 +167,7 @@ export async function main() {
                     const sharedSecret = await handleDHMessage(data, mykey.privateKey);
                     aeskey = await deriveAesKeySafe(sharedSecret, new Uint8Array(saltall));
                     console.log("✨✨ AES鍵が完成しました！");
+                    console.log("AES鍵 (16進数):", await bufferToHex(await crypto.subtle.exportKey("raw", aeskey)));
                 } catch (e) { console.error("鍵交換エラー:", e); }
             } else if (data.type === "message" && data.name !== name) {
                 try {

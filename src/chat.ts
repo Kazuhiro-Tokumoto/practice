@@ -1,4 +1,4 @@
-import {main} from "./main.jsx";
+import {main} from "./main.js";
 
 main();
 
