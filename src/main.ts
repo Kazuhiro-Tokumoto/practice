@@ -9,13 +9,9 @@ import { dhs } from "./mojyu-ru/joins.js";
 import { deriveAesKeySafe } from "./mojyu-ru/crypto/kdf.js";
 import { decrypt, encrypt } from "./mojyu-ru/crypto/aes.js";
 
-/**
- * --- 最速版 Base64 変換 (ブラウザネイティブAPI活用) ---
- */
 
 
 export async function main() {
-    // --- UIスタイル設定 (Messenger風) ---
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
 
     const roomSelection = document.createElement("div");
@@ -51,27 +47,8 @@ export async function main() {
     chatContainer.append(chatHeader, chatBox, inputContainer);
     document.body.appendChild(chatContainer);
 
-    let myDisplayName = localStorage.getItem("my_name") ?? "不明なユーザー";
-    const storedToken = localStorage.getItem("my_token") ?? "";
-    const storedUuid = localStorage.getItem("my_uuid") ?? "";
 
-    if (storedToken === "") {
-        window.location.href = "../index.html";
-        return;
-    }
-
-    // --- 2. 既存ロジック変数 ---
-    let wss: WebSocket;
-    let room: string;
-    let aeskey: any;
-    const salt: Uint8Array = generateSalt();
-    // ★非同期で変換
-    const base64salt = await arrayBufferToBase64(salt);
-    const mykey = await generateKeyPair();
-    const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
-    let name: string = myDisplayName;
-
-    async function sendEncryptedMessage(text: string, aeskey: CryptoKey) {
+        async function sendEncryptedMessage(text: string, aeskey: CryptoKey) {
         if (!aeskey) {
             console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
             return;
@@ -100,15 +77,16 @@ export async function main() {
 
     function addBubble(text: string, isMe: boolean) {
         const bubble = document.createElement("div");
+        const M: boolean = isMe;
         bubble.style.cssText = `
             max-width: 70%; 
             padding: 8px 15px; 
             border-radius: 18px; 
             font-size: 15px; 
-            align-self: ${isMe ? "flex-end" : "flex-start"}; 
-            background-color: ${isMe ? "#0084ff" : "#e4e6eb"}; 
-            color: ${isMe ? "white" : "#050505"}; 
-            ${isMe ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"};
+            align-self: ${M ? "flex-end" : "flex-start"}; 
+            background-color: ${M ? "#0084ff" : "#e4e6eb"}; 
+            color: ${M ? "white" : "#050505"}; 
+            ${M ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"};
             word-break: break-all;
             overflow-wrap: break-word;
             white-space: pre-wrap;
@@ -126,13 +104,44 @@ export async function main() {
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
+
+    const name:string = localStorage.getItem("my_name") ?? "不明なユーザー";
+    const storedToken = localStorage.getItem("my_token") ?? "";
+    const storedUuid = localStorage.getItem("my_uuid") ?? "";
+    const wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
+    let room: string;
+    let aeskey: CryptoKey | null = null;
+    const salt: Uint8Array = generateSalt();
+    const base64salt = await arrayBufferToBase64(salt);
+    const mykey = await generateKeyPair();
+    const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
+    
+
+
+    if (storedToken === "") {
+        window.location.href = "../index.html";
+        return;
+    }
+
+        sendBtn.addEventListener("click", async () => {
+        if (input.value) { await sendEncryptedMessage(input.value, aeskey); input.value = ""; }
+    });
+    input.addEventListener("keypress", async (e) => {
+        if (e.key === "Enter" && input.value) { await sendEncryptedMessage(input.value, aeskey); input.value = ""; }
+    });
+
+    window.addEventListener("beforeunload", () => {
+        if (wss && wss.readyState === WebSocket.OPEN) {
+            wss.send(JSON.stringify({ type: "leave", room: room, name: name }));
+        }
+    });
+
+
     btnroom.addEventListener("click", () => {
         room = inputroom.value || "defaultroom";
         chatHeader.textContent = `Room: ${room}`;
         roomSelection.style.display = "none";
         chatContainer.style.display = "flex";
-
-        wss = new WebSocket("wss://mail.shudo-physics.com/");
 
         wss.onopen = () => {
             wss.send(JSON.stringify({ type: "join", room: room, name: name, uuid: storedUuid, token: storedToken }));
@@ -185,16 +194,4 @@ export async function main() {
         };
     });
 
-    sendBtn.addEventListener("click", async () => {
-        if (input.value) { await sendEncryptedMessage(input.value, aeskey); input.value = ""; }
-    });
-    input.addEventListener("keypress", async (e) => {
-        if (e.key === "Enter" && input.value) { await sendEncryptedMessage(input.value, aeskey); input.value = ""; }
-    });
-
-    window.addEventListener("beforeunload", () => {
-        if (wss && wss.readyState === WebSocket.OPEN) {
-            wss.send(JSON.stringify({ type: "leave", room: room, name: name }));
-        }
-    });
 }
