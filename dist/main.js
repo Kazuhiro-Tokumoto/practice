@@ -10,7 +10,7 @@ import { decrypt, encrypt, deriveKeyFromPin } from "./mojyu-ru/crypto/aes.js";
 // @ts-ignore
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 // 1. Supabaseの接続設定
-export async function main() {
+async function main() {
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
     const roomSelection = document.createElement("div");
     roomSelection.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;";
@@ -264,3 +264,4 @@ export async function main() {
         };
     });
 }
+main();

@@ -17,8 +17,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 
 
-export async function main() {
-    document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
+ async function main() {
+      document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
 
     const roomSelection = document.createElement("div");
     roomSelection.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;";
@@ -294,3 +294,5 @@ const encryptedSeed = await base64ToUint8Array(dbData.ed25519_private);
     });
 
 }
+
+main();
