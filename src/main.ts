@@ -13,10 +13,6 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 // 1. Supabaseの接続設定
 
-    const name:string = localStorage.getItem("my_name") ?? "不明なユーザー";
-    const storedToken = localStorage.getItem("my_token") ?? "";
-    const storedUuid = localStorage.getItem("my_uuid") ?? "";
-    const wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
 
 
 
@@ -194,7 +190,10 @@ const encryptedSeed = await base64ToUint8Array(dbData.ed25519_private);
   return { privateKey, publicKey };
 }
 
-
+    const name:string = localStorage.getItem("my_name") ?? "不明なユーザー";
+    const storedToken = localStorage.getItem("my_token") ?? "";
+    const storedUuid = localStorage.getItem("my_uuid") ?? "";
+    const wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
     let room: string;
     let aeskey: CryptoKey | null = null;
     let pin : number ;

@@ -55,7 +55,7 @@ console.log("--- 鍵生成デバッグ ---");
         "raw", 
         new Uint8Array(seed), 
         { name: "Ed25519" }, 
-        true, 
+        false, 
         ["sign"]
     );
 

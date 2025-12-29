@@ -32,7 +32,7 @@ export async function generateEd25519KeyPair(seed) {
         console.log("seedが空っぽ(undefined/null)です！");
     }
     // この下でエラーが起きているはず
-    const privateKey = await window.crypto.subtle.importKey("raw", new Uint8Array(seed), { name: "Ed25519" }, true, ["sign"]);
+    const privateKey = await window.crypto.subtle.importKey("raw", new Uint8Array(seed), { name: "Ed25519" }, false, ["sign"]);
     // 2. 秘密鍵から公開鍵を取り出す
     const publicKeyBuffer = await window.crypto.subtle.exportKey("raw", privateKey);
     const publicKey = new Uint8Array(publicKeyBuffer);
