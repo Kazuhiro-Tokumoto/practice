@@ -42,34 +42,27 @@ export async function deriveSharedSecret(
 
 // ecdh.js:27 付近
 export async function generateEd25519KeyPair(seed) {
-    console.log("🛠️ ECDSA(P-256)に切り替えて復元します...");
+    console.log("🛠️ ECDSA(P-256) 用途を厳格に分離して復元します...");
 
-    // 1. seedを「秘密鍵」としてインポート
-    // ECDSAの場合、用途に "sign" を指定しても SyntaxError は出にくいです
+    // 1. 秘密鍵インポート：用途は ["sign"] だけ！
     const privateKey = await window.crypto.subtle.importKey(
         "raw",
         seed,
-        {
-            name: "ECDSA",
-            namedCurve: "P-256" // 標準的な曲線
-        },
+        { name: "ECDSA", namedCurve: "P-256" },
         true,
-        ["sign"]
+        ["sign"] // ここに verify を入れたら即死
     );
 
     // 2. 秘密鍵から公開鍵データを抽出
     const pubBuffer = await window.crypto.subtle.exportKey("raw", privateKey);
 
-    // 3. 公開鍵をインポート
+    // 3. 公開鍵インポート：用途は ["verify"] だけ！
     const publicKey = await window.crypto.subtle.importKey(
         "raw",
         pubBuffer,
-        {
-            name: "ECDSA",
-            namedCurve: "P-256"
-        },
+        { name: "ECDSA", namedCurve: "P-256" },
         true,
-        ["verify"]
+        ["verify"] // ここに sign を入れたら即死
     );
 
     return { privateKey, publicKey };
