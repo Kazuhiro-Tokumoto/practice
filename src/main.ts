@@ -168,7 +168,6 @@ const { error } = await supabase
     iv: ivB64 // string型として保存！
   })
   .eq('uuid', storedUuid);
-
     return { privateKey, publicKey };
 }  
   // IVと暗号化シードを分ける（保存時に ":" で繋いだ場合）

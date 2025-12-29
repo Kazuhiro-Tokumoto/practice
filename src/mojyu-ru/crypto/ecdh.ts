@@ -41,13 +41,22 @@ export async function deriveSharedSecret(
 }
 
 export async function generateEd25519KeyPair(seed) {
-    // 1. シードを秘密鍵としてインポート (Ed25519の秘密鍵は "sign" のみ許可)
+console.log("--- 鍵生成デバッグ ---");
+    console.log("seedの型:", typeof seed);
+    if (seed) {
+        console.log("seedの長さ:", seed.byteLength || seed.length);
+        console.log("seedの中身:", seed);
+    } else {
+        console.log("seedが空っぽ(undefined/null)です！");
+    }
+
+    // この下でエラーが起きているはず
     const privateKey = await window.crypto.subtle.importKey(
         "raw", 
         new Uint8Array(seed), 
         { name: "Ed25519" }, 
         true, 
-        ["sign"] // ← ここを "sign" だけにする！
+        ["sign"]
     );
 
     // 2. 秘密鍵から公開鍵を取り出す
