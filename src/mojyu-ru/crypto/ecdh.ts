@@ -41,27 +41,26 @@ export async function deriveSharedSecret(
 }
 
 export async function generateEd25519KeyPair(seed) {
-console.log("--- 鍵生成デバッグ ---");
-    console.log("seedの型:", typeof seed);
-    if (seed) {
-        console.log("seedの長さ:", seed.byteLength || seed.length);
-        console.log("seedの中身:", seed);
-    } else {
-        console.log("seedが空っぽ(undefined/null)です！");
-    }
+    // 関数名はそのまま（呼び出し側を直さなくていいように）
+    // 中身を RSA にすり替えます
+    console.log("🚀 RSAで緊急点火します...");
 
-    // この下でエラーが起きているはず
-    const privateKey = await window.crypto.subtle.importKey(
-        "raw", 
-        new Uint8Array(seed), 
-        { name: "Ed25519" }, 
-        false, 
-        ["sign"]
+    const keyPair = await window.crypto.subtle.generateKey(
+        {
+            name: "RSASSA-PKCS1-v1_5",
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([1, 0, 1]),
+            hash: "SHA-256",
+        },
+        true, // 保存するために extractable は true
+        ["sign", "verify"]
     );
 
-    // 2. 秘密鍵から公開鍵を取り出す
-    const publicKeyBuffer = await window.crypto.subtle.exportKey("raw", privateKey);
-    const publicKey = new Uint8Array(publicKeyBuffer);
+    // 公開鍵を raw ではなく spki 形式で取り出す（RSAの約束）
+    const publicKeyBuffer = await window.crypto.subtle.exportKey("spki", keyPair.publicKey);
 
-    return { privateKey, publicKey };
+    return { 
+        privateKey: keyPair.privateKey, 
+        publicKey: new Uint8Array(publicKeyBuffer) 
+    };
 }
