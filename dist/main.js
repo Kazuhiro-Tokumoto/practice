@@ -61,13 +61,6 @@ async function main() {
     // right: 150px にすれば、10px+120px(幅)+余裕20px で重なりません
     pinbtn.style.cssText = "position: fixed; top: 10px; right: 145px; padding: 8px 12px; border-radius: 8px; border: none; background: #0084ff; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
     document.body.appendChild(pinbtn);
-    pininput.addEventListener('input', () => {
-        // 数字以外（^0-9）をすべて空文字に置換
-        pininput.value = pininput.value.replace(/[^0-9]/g, '');
-    });
-    pinbtn.addEventListener("click", async () => {
-        await restoreKey(pininput.value);
-    });
     async function sendEncryptedMessage(text, aeskey) {
         if (!aeskey) {
             console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
@@ -266,6 +259,13 @@ async function main() {
                 }
             }
         };
+    });
+    pininput.addEventListener('input', () => {
+        // 数字以外（^0-9）をすべて空文字に置換
+        pininput.value = pininput.value.replace(/[^0-9]/g, '');
+    });
+    pinbtn.addEventListener("click", async () => {
+        await restoreKey(pininput.value);
     });
 }
 main();
