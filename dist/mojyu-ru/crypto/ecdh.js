@@ -21,13 +21,15 @@ export async function deriveSharedSecret(myPrivateKey, remoteJwk) {
     }, myPrivateKey, 256 // 256ビットの共有秘密を導出
     );
 }
+// ecdh.js:27 付近
 export async function generateEd25519KeyPair(seed) {
-    console.log("🛠️ Ed25519を再点火。seedから鍵を完全再現します...");
-    // seed(32バイト)をそのまま秘密鍵の材料としてインポート
-    const privateKey = await window.crypto.subtle.importKey("raw", seed, { name: "Ed25519" }, true, ["sign"]);
-    // 秘密鍵から公開鍵を導出（これがEd25519の強み！）
-    const publicKey = await window.crypto.subtle.importKey("raw", seed, { name: "Ed25519" }, true, ["verify"]);
-    // 公開鍵のエクスポート（例）
-    // const publicKey = ... (マインさんのモジュール内の既存ロジック)
+    // 1. 秘密鍵をインポート（用途は sign のみ）
+    const privateKey = await window.crypto.subtle.importKey("raw", seed, { name: "Ed25519" }, true, ["sign"] // ここを ["sign", "verify"] にするとエラーになります
+    );
+    // 2. 公開鍵を導出（秘密鍵から生の公開鍵を取り出す）
+    // ※Ed25519なら秘密鍵オブジェクトから直接エクスポートできます
+    const publicKeyBuffer = await window.crypto.subtle.exportKey("raw", privateKey);
+    // 3. 公開鍵を検証用オブジェクトとして再インポート（用途は verify のみ）
+    const publicKey = await window.crypto.subtle.importKey("raw", publicKeyBuffer, { name: "Ed25519" }, true, ["verify"]);
     return { privateKey, publicKey };
 }
