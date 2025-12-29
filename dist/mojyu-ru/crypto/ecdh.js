@@ -22,11 +22,10 @@ export async function deriveSharedSecret(myPrivateKey, remoteJwk) {
     );
 }
 export async function generateEd25519KeyPair(seed) {
-    // 1. シードを秘密鍵としてインポート
-    const privateKey = await window.crypto.subtle.importKey("raw", new Uint8Array(seed), { name: "Ed25519" }, true, // 公開鍵を取り出すためにエクスポートを許可
-    ["sign", "verify"]);
-    // 2. 公開鍵を raw (32バイト) で取り出す
-    // Web CryptoのEd25519では、秘密鍵をエクスポートすると公開鍵が得られる仕様です
+    // 1. シードを秘密鍵としてインポート (Ed25519の秘密鍵は "sign" のみ許可)
+    const privateKey = await window.crypto.subtle.importKey("raw", new Uint8Array(seed), { name: "Ed25519" }, true, ["sign"] // ← ここを "sign" だけにする！
+    );
+    // 2. 秘密鍵から公開鍵を取り出す
     const publicKeyBuffer = await window.crypto.subtle.exportKey("raw", privateKey);
     const publicKey = new Uint8Array(publicKeyBuffer);
     return { privateKey, publicKey };

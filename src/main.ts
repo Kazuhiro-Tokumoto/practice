@@ -53,16 +53,20 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
     chatContainer.append(chatHeader, chatBox, inputContainer);
     document.body.appendChild(chatContainer);
 // 実験
+// 入力欄 (一番右)
 const pininput = document.createElement("input");
 pininput.type = "password";
-pininput.placeholder = "PINコードを入力(数字のみ)";
-pininput.style.cssText = "position: fixed; top: 10px; right: 10px; padding: 8px; border-radius: 8px; border: 1px solid #ddd; outline: none;";
+pininput.placeholder = "PIN(数字)";
+// right: 10px に配置
+pininput.style.cssText = "position: fixed; top: 10px; right: 10px; width: 120px; padding: 8px; border-radius: 8px; border: 1px solid #ddd; outline: none; z-index: 1000;";
 document.body.appendChild(pininput);
+
+// 鍵復元ボタン (入力欄の左隣)
 const pinbtn = document.createElement("button");
 pinbtn.textContent = "鍵復元";
-pinbtn.style.cssText = "position: fixed; top: 10px; right: 150px; padding: 8px 12px; border-radius: 8px; border: none; background: #0084ff; color: white; font-weight: bold; cursor: pointer;";
+// right: 150px にすれば、10px+120px(幅)+余裕20px で重なりません
+pinbtn.style.cssText = "position: fixed; top: 10px; right: 145px; padding: 8px 12px; border-radius: 8px; border: none; background: #0084ff; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
 document.body.appendChild(pinbtn);
-
 pininput.addEventListener('input', () => {
   // 数字以外（^0-9）をすべて空文字に置換
   pininput.value = pininput.value.replace(/[^0-9]/g, '');
