@@ -246,15 +246,32 @@ const { data, error, status } = await supabase
     });
 
 
-    btnroom.addEventListener("click", () => {
-        room = inputroom.value || "defaultroom";
-        chatHeader.textContent = `Room: ${room}`;
-        roomSelection.style.display = "none";
-        chatContainer.style.display = "flex";
+  btnroom.addEventListener("click", () => {
+    room = inputroom.value || "defaultroom";
+    chatHeader.textContent = `Room: ${room}`;
+    roomSelection.style.display = "none";
+    chatContainer.style.display = "flex";
 
-        wss.onopen = () => {
-            wss.send(JSON.stringify({ type: "join", room: room, name: name, uuid: storedUuid, token: storedToken }));
-        }
+    // --- ここが重要！ ---
+    const joinMsg = JSON.stringify({ 
+        type: "join", 
+        room: room, 
+        name: name, 
+        uuid: storedUuid, 
+        token: storedToken 
+    });
+
+    // まだ接続中なら onopen を待つ
+    wss.onopen = () => {
+        console.log("🚀 Connection opened, sending JOIN");
+        wss.send(joinMsg);
+    };
+
+    // すでに接続済み（OPEN）なら、その場ですぐ送る！
+    if (wss.readyState === WebSocket.OPEN) {
+        console.log("⚡ Already open, sending JOIN immediately");
+        wss.send(joinMsg);
+    }
 
         wss.onmessage = async (event: MessageEvent) => {
             const data = JSON.parse(event.data);
