@@ -160,24 +160,34 @@ async function restoreKey(pin: string) {
     const { privateKey, publicKey } = await generateEd25519KeyPair(new Uint8Array(masterSeed));
 
     console.log("今からDBを更新します... UUID:", storedUuid);
+// restoreKey 内の保存処理をこう書き換える
+console.log("🛠️ 既存の自分を更新します... UUID:", storedUuid);
+
 const { data, error, status } = await supabase
   .from('profile_users')
-  .upsert({ // ← update を upsert に変更！
-     // ← uuid も明示的に入れる
-        ed25519_pub: await arrayBufferToBase64(
-          await crypto.subtle.exportKey("raw", publicKey)
-        ),
-        ed25519_private: encryptedSeed,
-        salt: await arrayBufferToBase64(salt),
-        iv: ivB64
-      }, { onConflict: 'uuid' }) // uuidが重なったら更新する設定
+  .update({ // upsert ではなく update
+    ed25519_pub: await arrayBufferToBase64(
+      await crypto.subtle.exportKey("raw", publicKey)
+    ),
+    ed25519_private: encryptedSeed,
+    salt: await arrayBufferToBase64(salt),
+    iv: ivB64
+  })
+  .eq('uuid', storedUuid) // 自分のUUIDに一致する行だけ
   .select();
 
-    if (error) {
-      console.error("❌ DB更新失敗:", error.message);
-    } else {
-      console.log("✅ DB更新成功！ Status:", status, "Data:", data);
-    }
+// 「なかったら降りる」判定
+if (error) {
+  console.error("❌ 通信エラーで降りるよ:", error.message);
+  return;
+}
+
+if (!data || data.length === 0) {
+  console.error("🚨 DBに自分の行がない！不正なアクセスか、登録が漏れてるからここで降りるよ！");
+  return; // 勝手に作らずに終了
+}
+
+console.log("✅ 正しく自分を更新できた。出発進行！");
 
     return { privateKey, publicKey }; // ここで新規登録時は終了
   } 
