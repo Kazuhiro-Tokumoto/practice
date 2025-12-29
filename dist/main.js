@@ -116,7 +116,7 @@ async function main() {
             .from('profile_users')
             .select('ed25519_private, salt')
             .eq('uuid', storedUuid)
-            .single();
+            .maybeSingle();
         if (error || !data) {
             console.error("データが取れんかった...", error);
             return null;
