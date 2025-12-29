@@ -6,7 +6,9 @@ import { handleDHMessage } from "./mojyu-ru/dh.js";
 import { dhs } from "./mojyu-ru/joins.js";
 import { deriveAesKeySafe } from "./mojyu-ru/crypto/kdf.js";
 import { decrypt, encrypt, deriveKeyFromPin } from "./mojyu-ru/crypto/aes.js";
-import { createClient } from '@supabase/supabase-js';
+// @supabase/supabase-js ではなく、URLを直接指定する
+// @ts-ignore
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 // 1. Supabaseの接続設定
 export async function main() {
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";

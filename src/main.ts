@@ -7,6 +7,7 @@ import { dhs } from "./mojyu-ru/joins.js";
 import { deriveAesKeySafe } from "./mojyu-ru/crypto/kdf.js";
 import { decrypt, encrypt ,deriveKeyFromPin} from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
+// @ts-ignore
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
 
