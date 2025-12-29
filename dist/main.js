@@ -10,6 +10,10 @@ import { decrypt, encrypt, deriveKeyFromPin } from "./mojyu-ru/crypto/aes.js";
 // @ts-ignore
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 // 1. Supabaseの接続設定
+const name = localStorage.getItem("my_name") ?? "不明なユーザー";
+const storedToken = localStorage.getItem("my_token") ?? "";
+const storedUuid = localStorage.getItem("my_uuid") ?? "";
+const wss = new WebSocket("wss://mail.shudo-physics.com/");
 async function main() {
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
     const roomSelection = document.createElement("div");
@@ -170,10 +174,6 @@ async function main() {
         console.log("復元成功！これで署名ができるようになったぞ。");
         return { privateKey, publicKey };
     }
-    const name = localStorage.getItem("my_name") ?? "不明なユーザー";
-    const storedToken = localStorage.getItem("my_token") ?? "";
-    const storedUuid = localStorage.getItem("my_uuid") ?? "";
-    const wss = new WebSocket("wss://mail.shudo-physics.com/");
     let room;
     let aeskey = null;
     let pin;
