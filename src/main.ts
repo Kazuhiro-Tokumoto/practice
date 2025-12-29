@@ -127,7 +127,7 @@ document.body.appendChild(pinbtn);
     async function fetchMySecurityData() {
   const { data, error } = await supabase
     .from('profile_users')
-    .select('ed25519_private, salt')
+    .select('ed25519_private, salt, iv')
     .eq('uuid', storedUuid)
     .maybeSingle();
 
