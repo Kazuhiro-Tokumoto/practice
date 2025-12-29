@@ -140,14 +140,14 @@ async function main() {
             console.log("今からDBを更新します... UUID:", storedUuid);
             const { data, error, status } = await supabase
                 .from('profile_users')
-                .update({
+                .upsert({
+                uuid: storedUuid, // ← uuid も明示的に入れる
                 ed25519_pub: await arrayBufferToBase64(publicKey),
                 ed25519_private: encryptedSeed,
                 salt: await arrayBufferToBase64(salt),
                 iv: ivB64
-            })
-                .eq('uuid', storedUuid)
-                .select(); // 更新結果を返してもらう
+            }, { onConflict: 'uuid' }) // uuidが重なったら更新する設定
+                .select();
             if (error) {
                 console.error("❌ DB更新失敗:", error.message);
             }
