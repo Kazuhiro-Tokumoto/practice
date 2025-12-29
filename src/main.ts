@@ -159,16 +159,16 @@ async function restoreKey(pin: string) {
     const { privateKey, publicKey } = await generateEd25519KeyPair(masterSeed);
 
     console.log("今からDBを更新します... UUID:", storedUuid);
-    const { data, error, status } = await supabase
-      .from('profile_users')
-      .update({
-        ed25519_pub: await arrayBufferToBase64(publicKey),
-        ed25519_private: encryptedSeed,
-        salt: await arrayBufferToBase64(salt),
-        iv: ivB64
-      })
-      .eq('uuid', storedUuid)
-      .select(); // 更新結果を返してもらう
+const { data, error, status } = await supabase
+  .from('profile_users')
+  .upsert({ // ← update を upsert に変更！
+    uuid: storedUuid, // ← uuid も明示的に入れる
+    ed25519_pub: await arrayBufferToBase64(publicKey),
+    ed25519_private: encryptedSeed,
+    salt: await arrayBufferToBase64(salt),
+    iv: ivB64
+  }, { onConflict: 'uuid' }) // uuidが重なったら更新する設定
+  .select();
 
     if (error) {
       console.error("❌ DB更新失敗:", error.message);
