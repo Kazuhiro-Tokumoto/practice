@@ -45,18 +45,21 @@ async function main() {
     document.body.appendChild(chatContainer);
     // 実験
     // 入力欄 (一番右)
+    /*
     const pininput = document.createElement("input");
     pininput.type = "password";
     pininput.placeholder = "PIN(数字)";
     // right: 10px に配置
     pininput.style.cssText = "position: fixed; top: 10px; right: 10px; width: 120px; padding: 8px; border-radius: 8px; border: 1px solid #ddd; outline: none; z-index: 1000;";
     document.body.appendChild(pininput);
+    
     // 鍵復元ボタン (入力欄の左隣)
     const pinbtn = document.createElement("button");
     pinbtn.textContent = "鍵復元";
     // right: 150px にすれば、10px+120px(幅)+余裕20px で重なりません
     pinbtn.style.cssText = "position: fixed; top: 10px; right: 145px; padding: 8px 12px; border-radius: 8px; border: none; background: #0084ff; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
     document.body.appendChild(pinbtn);
+    */
     async function sendEncryptedMessage(text, aeskey) {
         if (!aeskey) {
             console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
@@ -271,12 +274,15 @@ async function main() {
             }
         };
     });
-    pininput.addEventListener('input', () => {
-        // 数字以外（^0-9）をすべて空文字に置換
-        pininput.value = pininput.value.replace(/[^0-9]/g, '');
+    /*
+        pininput.addEventListener('input', () => {
+      // 数字以外（^0-9）をすべて空文字に置換
+      pininput.value = pininput.value.replace(/[^0-9]/g, '');
     });
+    
     pinbtn.addEventListener("click", async () => {
         await restoreKey(pininput.value);
     });
+    */
 }
 main();
