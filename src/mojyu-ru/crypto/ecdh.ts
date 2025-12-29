@@ -40,30 +40,48 @@ export async function deriveSharedSecret(
   );
 }
 
-// ecdh.js:27 付近
-export async function generateEd25519KeyPair(seed) {
-    console.log("🛠️ ECDSA(P-256) 用途を厳格に分離して復元します...");
+export async function generateEd25519KeyPair(seed: Uint8Array) {
+    console.log("🛠️ シードから Ed25519 鍵ペアを復元します...");
 
-    // 1. 秘密鍵インポート：用途は ["sign"] だけ！
+    // 1. Ed25519 の秘密鍵として import するための PKCS#8 ヘッダー (32バイト用)
+    // これを seed の前につけることで、Web Crypto が「これは Ed25519 の秘密鍵だ」と認識できます
+    const pkcs8Header = new Uint8Array([
+        0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20
+    ]);
+    
+    const pkcs8Key = new Uint8Array(pkcs8Header.length + seed.length);
+    pkcs8Key.set(pkcs8Header);
+    pkcs8Key.set(seed, pkcs8Header.length);
+
+    // 2. 秘密鍵をインポート
     const privateKey = await window.crypto.subtle.importKey(
-        "raw",
-        seed,
-        { name: "ECDSA", namedCurve: "P-256" },
+        "pkcs8",
+        pkcs8Key,
+        { name: "Ed25519" },
         true,
-        ["sign"] // ここに verify を入れたら即死
+        ["sign"]
     );
 
-    // 2. 秘密鍵から公開鍵データを抽出
-    const pubBuffer = await window.crypto.subtle.exportKey("raw", privateKey);
+    // 3. 秘密鍵から公開鍵を導出するために、一度エクスポート（または署名検証用として利用）
+    // Ed25519 の場合、秘密鍵があれば公開鍵は一意に決まります
+    // 公開鍵を抽出するには、まず公開鍵オブジェクトを作る必要があります
+    
+    // 手順：一旦ダミー署名などで公開鍵を取り出すのではなく、
+    // 秘密鍵の export 時のデータから公開鍵を生成するのが一般的ですが、
+    // 最も確実なのは、一度 JWK 形式で書き出して公開鍵部分を再 import することです。
 
-    // 3. 公開鍵インポート：用途は ["verify"] だけ！
+    const jwk = await window.crypto.subtle.exportKey("jwk", privateKey);
+    delete jwk.d; // 秘密鍵成分を削除
+    jwk.key_ops = ["verify"];
+
     const publicKey = await window.crypto.subtle.importKey(
-        "raw",
-        pubBuffer,
-        { name: "ECDSA", namedCurve: "P-256" },
+        "jwk",
+        jwk,
+        { name: "Ed25519" },
         true,
-        ["verify"] // ここに sign を入れたら即死
+        ["verify"]
     );
 
+    // 4. 鍵ペアとして return する
     return { privateKey, publicKey };
 }

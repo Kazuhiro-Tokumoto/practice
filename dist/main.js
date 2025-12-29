@@ -136,7 +136,7 @@ async function main() {
             const ivB64 = await arrayBufferToBase64(encrypted.iv);
             const encryptedSeed = await arrayBufferToBase64(encrypted.data);
             // RSA(またはEd25519)鍵ペアを生成
-            const { privateKey, publicKey } = await generateEd25519KeyPair(masterSeed);
+            const { privateKey, publicKey } = await generateEd25519KeyPair(new Uint8Array(masterSeed));
             console.log("今からDBを更新します... UUID:", storedUuid);
             const { data, error, status } = await supabase
                 .from('profile_users')
