@@ -39,3 +39,21 @@ export async function deriveSharedSecret(
     256 // 256ビットの共有秘密を導出
   );
 }
+
+export async function generateEd25519KeyPair(seed: Uint8Array): Promise<{ privateKey: CryptoKey; publicKey: Uint8Array }> {
+  // 1. シードを秘密鍵としてインポート
+  const privateKey = await window.crypto.subtle.importKey(
+    "raw",
+    new Uint8Array(seed),
+    { name: "Ed25519" },
+    true, // 公開鍵を取り出すためにエクスポートを許可
+    ["sign", "verify"]
+  );
+
+  // 2. 公開鍵を raw (32バイト) で取り出す
+  // Web CryptoのEd25519では、秘密鍵をエクスポートすると公開鍵が得られる仕様です
+  const publicKeyBuffer = await window.crypto.subtle.exportKey("raw", privateKey);
+  const publicKey = new Uint8Array(publicKeyBuffer);
+
+  return { privateKey, publicKey };
+}

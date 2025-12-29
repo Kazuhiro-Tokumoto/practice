@@ -52,7 +52,7 @@ export async function deriveKeyFromPin(pin: string, salt: Uint8Array) {
     {
       name: "PBKDF2",
       salt: salt as BufferSource,
-      iterations: 100000, // 10万回回して強度を上げる
+      iterations: 5000000, // 500万回回して強度を上げる
       hash: "SHA-256"
     },
     baseKey,

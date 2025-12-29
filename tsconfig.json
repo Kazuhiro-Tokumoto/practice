@@ -14,8 +14,8 @@
 
     "rootDir": "./src",
     "outDir": "./dist",
-    "noEmit": true,              /* 【重要】Viteがビルドするのでtscはファイルを出さない */
-    "allowImportingTsExtensions": true /* .ts を直接 import している場合のエラー防止 */
+    "noEmit": false,              /* 【重要】Viteがビルドするのでtscはファイルを出さない */
+    "allowImportingTsExtensions": false, /* .ts を直接 import している場合のエラー防止 */
   },
   "include": ["src"],
 }
