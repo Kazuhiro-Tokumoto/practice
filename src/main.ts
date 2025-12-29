@@ -53,7 +53,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
     document.body.appendChild(chatContainer);
 // 実験
 // 入力欄 (一番右)
-/*
+
 const pininput = document.createElement("input");
 pininput.type = "password";
 pininput.placeholder = "PIN(数字)";
@@ -67,7 +67,7 @@ pinbtn.textContent = "鍵復元";
 // right: 150px にすれば、10px+120px(幅)+余裕20px で重なりません
 pinbtn.style.cssText = "position: fixed; top: 10px; right: 145px; padding: 8px 12px; border-radius: 8px; border: none; background: #0084ff; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
 document.body.appendChild(pinbtn);
-*/
+
 
         async function sendEncryptedMessage(text: string, aeskey: CryptoKey) {
         if (!aeskey) {
@@ -163,12 +163,14 @@ async function restoreKey(pin: string) {
 const { data, error, status } = await supabase
   .from('profile_users')
   .upsert({ // ← update を upsert に変更！
-    uuid: storedUuid, // ← uuid も明示的に入れる
-    ed25519_pub: await arrayBufferToBase64(publicKey),
-    ed25519_private: encryptedSeed,
-    salt: await arrayBufferToBase64(salt),
-    iv: ivB64
-  }, { onConflict: 'uuid' }) // uuidが重なったら更新する設定
+     // ← uuid も明示的に入れる
+        ed25519_pub: await arrayBufferToBase64(
+          await crypto.subtle.exportKey("raw", publicKey)
+        ),
+        ed25519_private: encryptedSeed,
+        salt: await arrayBufferToBase64(salt),
+        iv: ivB64
+      }, { onConflict: 'uuid' }) // uuidが重なったら更新する設定
   .select();
 
     if (error) {
@@ -320,7 +322,7 @@ const { data, error, status } = await supabase
         };
     });
 
-/*
+
     pininput.addEventListener('input', () => {
   // 数字以外（^0-9）をすべて空文字に置換
   pininput.value = pininput.value.replace(/[^0-9]/g, '');
@@ -329,7 +331,7 @@ const { data, error, status } = await supabase
 pinbtn.addEventListener("click", async () => {
     await restoreKey(pininput.value);
 });
-*/
+
 }
 
 

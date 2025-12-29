@@ -22,20 +22,12 @@ export async function deriveSharedSecret(myPrivateKey, remoteJwk) {
     );
 }
 export async function generateEd25519KeyPair(seed) {
-    // 関数名はそのまま（呼び出し側を直さなくていいように）
-    // 中身を RSA にすり替えます
-    console.log("🚀 RSAで緊急点火します...");
-    const keyPair = await window.crypto.subtle.generateKey({
-        name: "RSASSA-PKCS1-v1_5",
-        modulusLength: 2048,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: "SHA-256",
-    }, true, // 保存するために extractable は true
-    ["sign", "verify"]);
-    // 公開鍵を raw ではなく spki 形式で取り出す（RSAの約束）
-    const publicKeyBuffer = await window.crypto.subtle.exportKey("spki", keyPair.publicKey);
-    return {
-        privateKey: keyPair.privateKey,
-        publicKey: new Uint8Array(publicKeyBuffer)
-    };
+    console.log("🛠️ Ed25519を再点火。seedから鍵を完全再現します...");
+    // seed(32バイト)をそのまま秘密鍵の材料としてインポート
+    const privateKey = await window.crypto.subtle.importKey("raw", seed, { name: "Ed25519" }, true, ["sign"]);
+    // 秘密鍵から公開鍵を導出（これがEd25519の強み！）
+    const publicKey = await window.crypto.subtle.importKey("raw", seed, { name: "Ed25519" }, true, ["verify"]);
+    // 公開鍵のエクスポート（例）
+    // const publicKey = ... (マインさんのモジュール内の既存ロジック)
+    return { privateKey, publicKey };
 }
