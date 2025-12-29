@@ -126,42 +126,53 @@ async function main() {
     async function restoreKey(pin) {
         // 1. DBからデータを取得
         const dbData = await fetchMySecurityData();
+        // --- 【新規登録ルート】DBにデータがない場合 ---
         if (!dbData || dbData.salt === null) {
             console.log("欄はあるけど中身が空だね。今から鍵を作って登録するよ！");
-            let salt = generateSalt();
+            const salt = generateSalt();
             const masterSeed = generateMasterSeed(32);
             const aesKey = await deriveKeyFromPin(pin.toString(), salt);
             const encrypted = await encrypt(aesKey, masterSeed.buffer);
-            const iv = await arrayBufferToBase64(encrypted.iv);
+            const ivB64 = await arrayBufferToBase64(encrypted.iv);
             const encryptedSeed = await arrayBufferToBase64(encrypted.data);
-            const ivB64 = iv; // iv はすでに base64 文字列なのでそのまま使う
-            const key = await generateEd25519KeyPair(masterSeed);
+            // RSA(またはEd25519)鍵ペアを生成
             const { privateKey, publicKey } = await generateEd25519KeyPair(masterSeed);
-            const { error } = await supabase
+            console.log("今からDBを更新します... UUID:", storedUuid);
+            const { data, error, status } = await supabase
                 .from('profile_users')
                 .update({
-                ed25519_pub: await arrayBufferToBase64(key.publicKey),
+                ed25519_pub: await arrayBufferToBase64(publicKey),
                 ed25519_private: encryptedSeed,
                 salt: await arrayBufferToBase64(salt),
-                iv: ivB64 // string型として保存！
+                iv: ivB64
             })
-                .eq('uuid', storedUuid);
+                .eq('uuid', storedUuid)
+                .select(); // 更新結果を返してもらう
+            if (error) {
+                console.error("❌ DB更新失敗:", error.message);
+            }
+            else {
+                console.log("✅ DB更新成功！ Status:", status, "Data:", data);
+            }
+            return { privateKey, publicKey }; // ここで新規登録時は終了
+        }
+        // --- 【復元ルート】DBにデータがある場合 ---
+        console.log("DBから鍵を復元中...");
+        try {
+            const salt = await base64ToUint8Array(dbData.salt);
+            const iv = await base64ToUint8Array(dbData.iv);
+            const encryptedSeed = await base64ToUint8Array(dbData.ed25519_private);
+            const aesKey = await deriveKeyFromPin(pin, salt);
+            const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv.buffer }, aesKey, encryptedSeed.buffer);
+            const seed = new Uint8Array(decryptedBuffer);
+            const { privateKey, publicKey } = await generateEd25519KeyPair(seed);
+            console.log("✨ 復元成功！これで署名ができるようになったぞ。");
             return { privateKey, publicKey };
         }
-        // IVと暗号化シードを分ける（保存時に ":" で繋いだ場合）
-        // 2. Base64からバイナリに戻す（カラムが分かれている場合）
-        const salt = await base64ToUint8Array(dbData.salt);
-        const iv = await base64ToUint8Array(dbData.iv); // 分割せず、そのままivカラムから取る
-        const encryptedSeed = await base64ToUint8Array(dbData.ed25519_private);
-        // 3. PINとソルトから「AESマスター鍵」を再現
-        const aesKey = await deriveKeyFromPin(pin, salt);
-        // 4. AES鍵でシードを復号！
-        const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv.buffer }, aesKey, encryptedSeed.buffer);
-        const seed = new Uint8Array(decryptedBuffer);
-        // 5. シードから Ed25519 鍵ペアを再生成
-        const { privateKey, publicKey } = await generateEd25519KeyPair(seed);
-        console.log("復元成功！これで署名ができるようになったぞ。");
-        return { privateKey, publicKey };
+        catch (e) {
+            console.error("❌ 復元失敗。PINコードが違うか、データが壊れています:", e);
+            throw e;
+        }
     }
     const name = localStorage.getItem("my_name") ?? "不明なユーザー";
     const storedToken = localStorage.getItem("my_token") ?? "";
