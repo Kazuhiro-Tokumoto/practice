@@ -379,18 +379,27 @@ console.log("✅ 正しく自分を更新できた。出発進行！");
             else if (data.type === "DH" && data.name !== name) {
                 try {
                     // ★awaitを追加
-                    const myKeys = await restoreKey(localStorage.getItem("pin") || "");
-                    const peerProfile = await testPublicKeyFetch(data.uuid);
+                    const keys = await restoreKey(localStorage.getItem("pin") || "");
+// 1. まずViewから相手のプロフィールを取得
+  const peerData = await testPublicKeyFetch(data.uuid); 
 
-                    if (!peerProfile || !peerProfile.x25519_pub) {
-                        console.error("相手の公開鍵が取得できませんでした");
-                        return;
-                    }
+if (peerData && peerData.x25519_pub) {
+    // 2. その中の「x25519_pub」という文字列だけをバイナリ（Uint8Array）に変換
+    const peerRawPubKey = await base64ToUint8Array(peerData.x25519_pub);
 
-                    aeskey = await deriveSharedKey(
-                        myKeys.xPriv,
-                        peerProfile.x25519_pub
-                    );
+    // 3. インポートして鍵オブジェクトにする（これがさっきの「儀式」）
+    const theirPublicKey = await window.crypto.subtle.importKey(
+        "raw",
+        peerRawPubKey as BufferSource,
+        { name: "X25519" },
+        true,
+        []
+    );
+
+    // 4. これでようやく「合体」！
+     aeskey = await deriveSharedKey(keys.xPriv, theirPublicKey);
+    console.log("✨ 共通鍵の合体に成功！");
+}
 
                     console.log("✨✨ AES鍵が完成しました！");
                     console.log("AES鍵 base64:", await arrayBufferToBase64(await crypto.subtle.exportKey("raw", aeskey)));
