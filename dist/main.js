@@ -9,25 +9,7 @@ import { decrypt, encrypt, deriveKeyFromPin } from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-// @ts-ignore
-import { ed25519 } from 'https://esm.sh/@noble/curves@1.3.0/ed25519';
 // 1. Supabaseの接続設定
-console.log("ed25519 の中身:", Object.keys(ed25519));
-// 2. utils の中身を再確認
-if (ed25519.utils) {
-    console.log("utils の中身:", Object.keys(ed25519.utils));
-}
-const seed = new Uint8Array(32).fill(1);
-// 2. 秘密鍵シード（32バイト）から公開鍵を作る
-const pubKey = ed25519.getPublicKey(seed);
-// 3. モンゴメリ形式（X25519用）に変換
-const point = ed25519.ExtendedPoint.fromHex(pubKey);
-// 2. その点を「モンゴメリ形式（X25519用）」の座標に変換して、バイト列（Uint8Array）で取り出す
-const xPub = point.toRawX();
-console.log("変換成功！これがX25519の公開鍵です:", xPub);
-const base64Pub = await arrayBufferToBase64(xPub);
-console.log("変換後のX25519公開鍵 (Base64):", base64Pub);
-console.log("これでエラーなく動くはず！");
 async function main() {
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
     const roomSelection = document.createElement("div");
