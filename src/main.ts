@@ -27,7 +27,12 @@ console.log("Ed25519 公開鍵 (Hex):", bufferToHex(pubbb));
 const pubKey = ed25519.getPublicKey(seed);
 
 // 3. モンゴメリ形式（X25519用）に変換
-const xPub = ed25519.etc.toMontgomery(pubKey);
+const point = ed25519.ExtendedPoint.fromHex(pubKey);
+
+// 2. その点を「モンゴメリ形式（X25519用）」の座標に変換して、バイト列（Uint8Array）で取り出す
+const xPub = point.toRawX();
+
+console.log("変換成功！これがX25519の公開鍵です:", xPub);
 const base64Pub = await arrayBufferToBase64(xPub);
 console.log("変換後のX25519公開鍵 (Base64):", base64Pub);
 
