@@ -179,7 +179,7 @@ async function testEd25519Signature(privateKey: CryptoKey, publicKey: CryptoKey)
   }
 }
 // 実験：相手のUUID（画像にあった d1fde...）を使って、公開鍵だけを引っこ抜く
-async function testPublicKeyFetch(targetUuid) {
+async function testPublicKeyFetch(targetUuid: string): Promise<any> {
   console.log("🛠️ 実験開始: 窓口(View)からデータ取得を試みます...");
 
   const { data, error } = await supabase
@@ -190,17 +190,19 @@ async function testPublicKeyFetch(targetUuid) {
 
   if (error) {
     console.error("❌ 失敗:", error.message);
-    return;
+    return null;
   }
 
   console.log("🎯 取得できたデータ:", data);
 
   // 検証
-  if (data.email === undefined && data.ed25519_private === undefined) {
+  if (data && data.email === undefined && data.ed25519_private === undefined) {
     console.log("✅ 成功！メルアドと秘密鍵は物理的に遮断されています。");
-  } else {
+  } else if (data) {
     console.warn("⚠️ 警告: 隠すべきデータが見えてしまっています！");
   }
+
+  return data;
 }
 
 
@@ -297,8 +299,6 @@ console.log("✅ 正しく自分を更新できた。出発進行！");
     let pin : number ;
     const salt: Uint8Array = generateSalt();
     const base64salt = await arrayBufferToBase64(salt);
-    const mykey = await generateKeyPair();
-    const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
 
     // DB用のパスワードとなんか、　まぁええやろ
     const supabase = createClient(
@@ -370,7 +370,7 @@ console.log("✅ 正しく自分を更新できた。出発進行！");
 
             if (data.type === "dh-start" || data.type === "join-broadcast") {
                 if (data.name === name) return; 
-                const dhmsg = dhs(event, pubJwk, base64salt, name, room, storedUuid);
+                const dhmsg = dhs(event, name, room, storedUuid);
                 if (dhmsg) {
                     wss.send(JSON.stringify(dhmsg));
                     console.log("自分のDHを送信完了");
@@ -379,10 +379,19 @@ console.log("✅ 正しく自分を更新できた。出発進行！");
             else if (data.type === "DH" && data.name !== name) {
                 try {
                     // ★awaitを追加
-                    const remoteSalt = await base64ToUint8Array(data.salt);
-                    const saltall = combineSalts(salt, remoteSalt);
-                    const sharedSecret = await handleDHMessage(data, mykey.privateKey);
-                    aeskey = await deriveAesKeySafe(sharedSecret, new Uint8Array(saltall));
+                    const myKeys = await restoreKey(localStorage.getItem("pin") || "");
+                    const peerProfile = await testPublicKeyFetch(data.uuid);
+
+                    if (!peerProfile || !peerProfile.x25519_pub) {
+                        console.error("相手の公開鍵が取得できませんでした");
+                        return;
+                    }
+
+                    aeskey = await deriveSharedKey(
+                        myKeys.xPriv,
+                        peerProfile.x25519_pub
+                    );
+
                     console.log("✨✨ AES鍵が完成しました！");
                     console.log("AES鍵 base64:", await arrayBufferToBase64(await crypto.subtle.exportKey("raw", aeskey)));
                 } catch (e) { console.error("鍵交換エラー:", e); }
@@ -403,7 +412,7 @@ console.log("✅ 正しく自分を更新できた。出発進行！");
     });
 
     if (localStorage.getItem("pin") === null) {
-
+roomSelection.style.display = "none";
     pininput.addEventListener('input', () => {
   // 数字以外（^0-9）をすべて空文字に置換
   pininput.value = pininput.value.replace(/[^0-9]/g, '');
@@ -425,7 +434,7 @@ console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true �
       testEd25519Signature(keys.privateKey, keys.publicKey);
       testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
       localStorage.setItem("pin", pininput.value);
-
+roomSelection.style.display = "flex";
 });
 
     }else{

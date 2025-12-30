@@ -1,11 +1,9 @@
 //npx vite build
-import { generateKeyPair, generateEd25519KeyPair, generateX25519KeyPair } from "./mojyu-ru/crypto/ecdh.js";
+import { generateEd25519KeyPair, generateX25519KeyPair } from "./mojyu-ru/crypto/ecdh.js";
 import { arrayBufferToBase64, base64ToUint8Array } from "./mojyu-ru/base64.js"; // 16進数変換のみ残す
-import { generateSalt, combineSalts, generateMasterSeed } from "./mojyu-ru/crypto/saltaes.js";
-import { handleDHMessage } from "./mojyu-ru/dh.js";
+import { generateSalt, generateMasterSeed } from "./mojyu-ru/crypto/saltaes.js";
 import { dhs } from "./mojyu-ru/joins.js";
-import { deriveAesKeySafe } from "./mojyu-ru/crypto/kdf.js";
-import { decrypt, encrypt, deriveKeyFromPin } from "./mojyu-ru/crypto/aes.js";
+import { decrypt, encrypt, deriveKeyFromPin, deriveSharedKey } from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -159,16 +157,17 @@ async function main() {
             .maybeSingle();
         if (error) {
             console.error("❌ 失敗:", error.message);
-            return;
+            return null;
         }
         console.log("🎯 取得できたデータ:", data);
         // 検証
-        if (data.email === undefined && data.ed25519_private === undefined) {
+        if (data && data.email === undefined && data.ed25519_private === undefined) {
             console.log("✅ 成功！メルアドと秘密鍵は物理的に遮断されています。");
         }
-        else {
+        else if (data) {
             console.warn("⚠️ 警告: 隠すべきデータが見えてしまっています！");
         }
+        return data;
     }
     async function restoreKey(pin) {
         // 1. DBからデータを取得
@@ -239,8 +238,6 @@ async function main() {
     let pin;
     const salt = generateSalt();
     const base64salt = await arrayBufferToBase64(salt);
-    const mykey = await generateKeyPair();
-    const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
     // DB用のパスワードとなんか、　まぁええやろ
     const supabase = createClient('https://cedpfdoanarzyxcroymc.supabase.co', 'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', { global: { headers: { Authorization: `Bearer ${storedToken}`, }, }, });
     if (storedToken === "") {
@@ -303,7 +300,7 @@ async function main() {
             if (data.type === "dh-start" || data.type === "join-broadcast") {
                 if (data.name === name)
                     return;
-                const dhmsg = dhs(event, pubJwk, base64salt, name, room, storedUuid);
+                const dhmsg = dhs(event, name, room, storedUuid);
                 if (dhmsg) {
                     wss.send(JSON.stringify(dhmsg));
                     console.log("自分のDHを送信完了");
@@ -312,10 +309,13 @@ async function main() {
             else if (data.type === "DH" && data.name !== name) {
                 try {
                     // ★awaitを追加
-                    const remoteSalt = await base64ToUint8Array(data.salt);
-                    const saltall = combineSalts(salt, remoteSalt);
-                    const sharedSecret = await handleDHMessage(data, mykey.privateKey);
-                    aeskey = await deriveAesKeySafe(sharedSecret, new Uint8Array(saltall));
+                    const myKeys = await restoreKey(localStorage.getItem("pin") || "");
+                    const peerProfile = await testPublicKeyFetch(data.uuid);
+                    if (!peerProfile || !peerProfile.x25519_pub) {
+                        console.error("相手の公開鍵が取得できませんでした");
+                        return;
+                    }
+                    aeskey = await deriveSharedKey(myKeys.xPriv, peerProfile.x25519_pub);
                     console.log("✨✨ AES鍵が完成しました！");
                     console.log("AES鍵 base64:", await arrayBufferToBase64(await crypto.subtle.exportKey("raw", aeskey)));
                 }
@@ -343,6 +343,7 @@ async function main() {
         };
     });
     if (localStorage.getItem("pin") === null) {
+        roomSelection.style.display = "none";
         pininput.addEventListener('input', () => {
             // 数字以外（^0-9）をすべて空文字に置換
             pininput.value = pininput.value.replace(/[^0-9]/g, '');
@@ -360,6 +361,7 @@ async function main() {
             testEd25519Signature(keys.privateKey, keys.publicKey);
             testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
             localStorage.setItem("pin", pininput.value);
+            roomSelection.style.display = "flex";
         });
     }
     else {

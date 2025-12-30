@@ -1,4 +1,4 @@
-export function dhs(a: any, mykey: any, salt: any, name: string, room: string,uuid:string) {
+export function dhs(a: any, name: string, room: string,uuid:string) {
     // a.data が存在するかチェック（安全のため）
     const msgData = typeof a.data === "string" ? JSON.parse(a.data) : a;
 
@@ -8,9 +8,7 @@ export function dhs(a: any, mykey: any, salt: any, name: string, room: string,uu
             type: "DH",
             uuid: uuid,
             name: name,
-            room: room,
-            salt: salt,
-            public_key: mykey
+            room: room
         };
     }
     return null;
