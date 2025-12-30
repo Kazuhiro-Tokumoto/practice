@@ -12,10 +12,18 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // @ts-ignore
 import { ed25519, x25519 } from 'https://esm.sh/@noble/curves@1.3.0/ed25519';
 // 1. Supabaseの接続設定
+console.log("ed25519 の中身:", Object.keys(ed25519));
 
+// 2. utils の中身を再確認
+if (ed25519.utils) {
+    console.log("utils の中身:", Object.keys(ed25519.utils));
+}
 const seed = new Uint8Array(32).fill(1); 
 
 // 2. 秘密鍵シード（32バイト）から公開鍵を作る
+const privateKey = ed25519.getPrivateKey(seed);
+const pubbb = ed25519.getPublicKey(privateKey);
+console.log("Ed25519 公開鍵 (Hex):", bufferToHex(pubbb));
 const pubKey = ed25519.getPublicKey(seed);
 
 // 3. モンゴメリ形式（X25519用）に変換
