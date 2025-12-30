@@ -9,8 +9,8 @@ import { decrypt, encrypt ,deriveKeyFromPin} from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-import { ed25519, x25519 } from '@noble/curves/ed25519.js';
-
+// @ts-ignore
+import { ed25519, x25519 } from 'https://esm.sh/@noble/curves@1.3.0/ed25519';
 // 1. Supabaseの接続設定
 
 const seed = new Uint8Array(32).fill(1); 
