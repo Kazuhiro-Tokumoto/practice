@@ -407,7 +407,12 @@ pinbtn.addEventListener("click", async () => {
 
       const keys = await restoreKey(pininput.value);
       const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
-      console.log ("🔑 鍵の一致確認:",keys === keys2);
+// 中身（Rawデータ）を取り出して比較する例
+const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
+const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
+
+const isSame = new Uint8Array(raw1).every((val, i) => val === new Uint8Array(raw2)[i]);
+console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
       testEd25519Signature(keys.privateKey, keys.publicKey);
       testPublicKeyFetch("2bf3bb52-f110-4883-bac5-8cf575fec632");
 
