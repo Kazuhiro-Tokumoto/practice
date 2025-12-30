@@ -298,6 +298,8 @@ async function main() {
     });
     pinbtn.addEventListener("click", async () => {
         await restoreKey(pininput.value);
+        console.log((await restoreKey(pininput.value)).privateKey);
+        console.log((await restoreKey(pininput.value)).publicKey);
     });
 }
 main();

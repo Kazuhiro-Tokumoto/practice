@@ -339,7 +339,10 @@ console.log("✅ 正しく自分を更新できた。出発進行！");
 });
 
 pinbtn.addEventListener("click", async () => {
-    await restoreKey(pininput.value);
+  await restoreKey(pininput.value);
+   console.log( (await restoreKey(pininput.value)).privateKey);
+      console.log( (await restoreKey(pininput.value)).publicKey);
+
 });
 
 }
