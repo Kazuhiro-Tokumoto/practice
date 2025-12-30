@@ -32,10 +32,7 @@ import {
 } from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
-import {
-    createClient
-    // @ts-ignore
-} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+import {createClient} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 // @ts-ignore
 import {
     ed25519,
