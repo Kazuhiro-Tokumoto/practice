@@ -148,7 +148,7 @@ document.body.appendChild(pinContainer);
 
 
     const enemyencyWipeBtn = document.createElement("button");
-    enemyencyWipeBtn.textContent = "削除";
+    enemyencyWipeBtn.textContent = "データ削除";
     enemyencyWipeBtn.style.cssText = "position: fixed; top: 10px; left: 10px; padding: 8px 12px; border-radius: 8px; border: none; background: #ff4444; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
     document.body.appendChild(enemyencyWipeBtn);
 
@@ -616,9 +616,6 @@ document.body.appendChild(pinContainer);
         });
 
         pinbtn.addEventListener("click", async () => {
-            pinbtn.style.display = "none";
-            pininput.style.display = "none";
-          wipeLink.style.display = "none";
           pinContainer.style.display = "none";
           enemyencyWipeBtn.style.display = "flex";
 
@@ -637,9 +634,6 @@ document.body.appendChild(pinContainer);
         });
 
     } else {
-        pininput.style.display = "none";
-        pinbtn.style.display = "none";
-        wipeLink.style.display = "none";
         pinContainer.style.display = "none";
       enemyencyWipeBtn.style.display = "flex";
         const keys = await restoreKey(localStorage.getItem("pin") || "");
