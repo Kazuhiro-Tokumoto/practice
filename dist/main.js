@@ -1,6 +1,6 @@
 //npx vite build
 import { generateKeyPair, generateEd25519KeyPair } from "./mojyu-ru/crypto/ecdh.js";
-import { bufferToHex, arrayBufferToBase64, base64ToUint8Array } from "./mojyu-ru/base64.js"; // 16進数変換のみ残す
+import { arrayBufferToBase64, base64ToUint8Array } from "./mojyu-ru/base64.js"; // 16進数変換のみ残す
 import { generateSalt, combineSalts, generateMasterSeed } from "./mojyu-ru/crypto/saltaes.js";
 import { handleDHMessage } from "./mojyu-ru/dh.js";
 import { dhs } from "./mojyu-ru/joins.js";
@@ -19,9 +19,6 @@ if (ed25519.utils) {
 }
 const seed = new Uint8Array(32).fill(1);
 // 2. 秘密鍵シード（32バイト）から公開鍵を作る
-const privateKey = ed25519.getPrivateKey(seed);
-const pubbb = ed25519.getPublicKey(privateKey);
-console.log("Ed25519 公開鍵 (Hex):", bufferToHex(pubbb));
 const pubKey = ed25519.getPublicKey(seed);
 // 3. モンゴメリ形式（X25519用）に変換
 const point = ed25519.ExtendedPoint.fromHex(pubKey);

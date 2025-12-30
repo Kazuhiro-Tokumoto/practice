@@ -21,9 +21,6 @@ if (ed25519.utils) {
 const seed = new Uint8Array(32).fill(1); 
 
 // 2. 秘密鍵シード（32バイト）から公開鍵を作る
-const privateKey = ed25519.getPrivateKey(seed);
-const pubbb = ed25519.getPublicKey(privateKey);
-console.log("Ed25519 公開鍵 (Hex):", bufferToHex(pubbb));
 const pubKey = ed25519.getPublicKey(seed);
 
 // 3. モンゴメリ形式（X25519用）に変換
