@@ -273,8 +273,6 @@ async function restoreKey(pin: string) {
     enemyencyWipeBtn.style.cssText = "position: fixed; top: 10px; left: 10px; padding: 8px 12px; border-radius: 8px; border: none; background: #ff4444; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
         enemyencyWipeBtn.onclick = emergencyWipe;
     document.body.appendChild(enemyencyWipeBtn);
-
-        const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
     const wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
     let room: string;
     let aeskey: CryptoKey | null = null;
@@ -504,7 +502,49 @@ async function restoreKey(pin: string) {
 
   
     // DB用のパスワードとなんか、　まぁええやろ
+        const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
+            if (localStorage.getItem("pin") === null) {
+      enemyencyWipeBtn.style.display = "none";
+        roomSelection.style.display = "none";
+        pininput.addEventListener('input', () => {
+            // 数字以外（^0-9）をすべて空文字に置換
+            pininput.value = pininput.value.replace(/[^0-9]/g, '');
+        });
 
+        pinbtn.addEventListener("click", async () => {
+          pinContainer.style.display = "none";
+          enemyencyWipeBtn.style.display = "flex";
+
+            const keys = await restoreKey(pininput.value);
+            const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
+            // 中身（Rawデータ）を取り出して比較する例
+            const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
+            const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
+
+            const isSame = new Uint8Array(raw1).every((val, i) => val === new Uint8Array(raw2)[i]);
+            console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
+            testEd25519Signature(keys.privateKey, keys.publicKey);
+            testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
+            localStorage.setItem("pin", pininput.value);
+            roomSelection.style.display = "flex";
+        });
+
+    } else {
+        pinContainer.style.display = "none";
+      enemyencyWipeBtn.style.display = "flex";
+        const keys = await restoreKey(localStorage.getItem("pin") || "");
+        const keys2 = await restoreKey(localStorage.getItem("pin") || ""); // 再度復元して同じ鍵が出るか確認
+        // 中身（Rawデータ）を取り出して比較する例
+        const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
+        const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
+
+        const isSame = new Uint8Array(raw1).every((val, i) => val === new Uint8Array(raw2)[i]);
+        console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
+        testEd25519Signature(keys.privateKey, keys.publicKey);
+        testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
+        localStorage.setItem("pin", pininput.value);
+
+    }
 
     if (storedToken === "") {
         window.location.href = "../index.html";
@@ -638,50 +678,8 @@ async function restoreKey(pin: string) {
         };
     });
 
-    
 
-    if (localStorage.getItem("pin") === null) {
-      enemyencyWipeBtn.style.display = "none";
-        roomSelection.style.display = "none";
-        pininput.addEventListener('input', () => {
-            // 数字以外（^0-9）をすべて空文字に置換
-            pininput.value = pininput.value.replace(/[^0-9]/g, '');
-        });
 
-        pinbtn.addEventListener("click", async () => {
-          pinContainer.style.display = "none";
-          enemyencyWipeBtn.style.display = "flex";
-
-            const keys = await restoreKey(pininput.value);
-            const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
-            // 中身（Rawデータ）を取り出して比較する例
-            const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
-            const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
-
-            const isSame = new Uint8Array(raw1).every((val, i) => val === new Uint8Array(raw2)[i]);
-            console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
-            testEd25519Signature(keys.privateKey, keys.publicKey);
-            testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
-            localStorage.setItem("pin", pininput.value);
-            roomSelection.style.display = "flex";
-        });
-
-    } else {
-        pinContainer.style.display = "none";
-      enemyencyWipeBtn.style.display = "flex";
-        const keys = await restoreKey(localStorage.getItem("pin") || "");
-        const keys2 = await restoreKey(localStorage.getItem("pin") || ""); // 再度復元して同じ鍵が出るか確認
-        // 中身（Rawデータ）を取り出して比較する例
-        const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
-        const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
-
-        const isSame = new Uint8Array(raw1).every((val, i) => val === new Uint8Array(raw2)[i]);
-        console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
-        testEd25519Signature(keys.privateKey, keys.publicKey);
-        testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
-        localStorage.setItem("pin", pininput.value);
-
-    }
 
 }
 
