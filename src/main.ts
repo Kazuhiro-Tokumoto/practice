@@ -42,32 +42,13 @@ import {
     x25519
     // @ts-ignore
 } from 'https://esm.sh/@noble/curves@1.3.0/ed25519';
-// 1. Supabaseの接続設定
+// 1. 
+// Supabaseの接続設定
+
+
 
 // 32バイトのシード（本来はPINから生成）
 async function main() {
-
-      const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
-    const name: string = localStorage.getItem("my_name") ?? "不明なユーザー";
-    const storedToken = localStorage.getItem("my_token") ?? "";
-    const storedUuid = localStorage.getItem("my_uuid") ?? "";
-    const wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
-    let room: string;
-    let aeskey: CryptoKey | null = null;
-    let anoskey: CryptoKey;
-
-    // DB用のパスワードとなんか、　まぁええやろ
-    const supabase = createClient(
-        'https://cedpfdoanarzyxcroymc.supabase.co',
-        'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
-            global: {
-                headers: {
-                    Authorization: `Bearer ${storedToken}`,
-                },
-            },
-        }
-    );
-
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
 
     const roomSelection = document.createElement("div");
@@ -172,11 +153,10 @@ document.body.appendChild(pinContainer);
     const enemyencyWipeBtn = document.createElement("button");
     enemyencyWipeBtn.textContent = "データ削除";
     enemyencyWipeBtn.style.cssText = "position: fixed; top: 10px; left: 10px; padding: 8px 12px; border-radius: 8px; border: none; background: #ff4444; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
+        enemyencyWipeBtn.onclick = emergencyWipe;
     document.body.appendChild(enemyencyWipeBtn);
 
-    enemyencyWipeBtn.addEventListener("click", async () => {
-        await emergencyWipe();
-    });
+
 // 鍵が復元されたらこのコンテナを消す処理を restoreKey の成功時に入れてね
 // pinContainer.style.display = "none";
 
@@ -503,7 +483,26 @@ document.body.appendChild(pinContainer);
             throw e;
         }
     }
+    const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
+    const name: string = localStorage.getItem("my_name") ?? "不明なユーザー";
+    const storedToken = localStorage.getItem("my_token") ?? "";
+    const storedUuid = localStorage.getItem("my_uuid") ?? "";
+    const wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
+    let room: string;
+    let aeskey: CryptoKey | null = null;
+    let anoskey: CryptoKey;
+const supabase = createClient(
 
+        'https://cedpfdoanarzyxcroymc.supabase.co',
+        'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${storedToken}`,
+                },
+            },
+        }
+    );
+    // DB用のパスワードとなんか、　まぁええやろ
 
 
     if (storedToken === "") {
