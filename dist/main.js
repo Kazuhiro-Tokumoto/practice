@@ -106,16 +106,8 @@ async function main() {
     document.body.appendChild(pinContainer);
     // 鍵が復元されたらこのコンテナを消す処理を restoreKey の成功時に入れてね
     // pinContainer.style.display = "none";
-    // 緊急ワイプボタン (左上)
-    const enemyencyWipeBtn = document.createElement("button");
-    enemyencyWipeBtn.textContent = "削除";
-    enemyencyWipeBtn.style.cssText = "position: fixed; top: 10px; left: 10px; padding: 8px 12px; border-radius: 8px; border: none; background: #ff4444; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
-    document.body.appendChild(enemyencyWipeBtn);
-    enemyencyWipeBtn.addEventListener("click", async () => {
-        await emergencyWipe();
-    });
     async function emergencyWipe() {
-        if (!confirm("🚨 緊急事態！鍵データをすべて破棄し、ローカル情報も削除しますか？"))
+        if (!confirm("鍵データをすべて破棄し、ローカル情報も削除しますか？"))
             return;
         console.log("🛠️ 緊急ワイプを実行します...");
         // 1. DBの鍵データをすべて空にする（UUIDだけ残す）
