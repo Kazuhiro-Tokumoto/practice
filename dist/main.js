@@ -156,7 +156,7 @@ async function main() {
             .from('public_profiles') // 👈 さっき作った View の名前
             .select('*') // 👈 あえて「全部」リクエストしてみる
             .eq('uuid', targetUuid)
-            .single();
+            .maybeSingle();
         if (error) {
             console.error("❌ 失敗:", error.message);
             return;
