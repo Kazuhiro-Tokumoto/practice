@@ -9,11 +9,21 @@ import { decrypt, encrypt ,deriveKeyFromPin} from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-
+import { ed25519, x25519 } from '@noble/curves/ed25519.js';
 
 // 1. Supabaseの接続設定
 
+const seed = new Uint8Array(32).fill(1); 
 
+// 2. 秘密鍵シード（32バイト）から公開鍵を作る
+const pubKey = ed25519.getPublicKey(seed);
+
+// 3. モンゴメリ形式（X25519用）に変換
+const xPub = ed25519.utils.toMontgomery(pubKey);
+const base64Pub = await arrayBufferToBase64(xPub);
+console.log("変換後のX25519公開鍵 (Base64):", base64Pub);
+
+console.log("これでエラーなく動くはず！");
 
 
  async function main() {
@@ -86,7 +96,10 @@ document.body.appendChild(pinbtn);
             ]);
 
             const msg = {
-                type: "message", room: room, name: name,
+                type: "message",
+                 room: room, 
+                 name: name,
+                 uuid: storedUuid,
                 iv: ivB64,
                 data: dataB64
             };
@@ -315,7 +328,7 @@ console.log("✅ 正しく自分を更新できた。出発進行！");
 
     window.addEventListener("beforeunload", () => {
         if (wss && wss.readyState === WebSocket.OPEN) {
-            wss.send(JSON.stringify({ type: "leave", room: room, name: name }));
+            wss.send(JSON.stringify({ type: "leave", room: room, name: name,uuid : storedUuid }));
         }
     });
 
@@ -362,7 +375,7 @@ console.log("✅ 正しく自分を更新できた。出発進行！");
 
             if (data.type === "dh-start" || data.type === "join-broadcast") {
                 if (data.name === name) return; 
-                const dhmsg = dhs(event, pubJwk, base64salt, name, room);
+                const dhmsg = dhs(event, pubJwk, base64salt, name, room, storedUuid);
                 if (dhmsg) {
                     wss.send(JSON.stringify(dhmsg));
                     console.log("自分のDHを送信完了");

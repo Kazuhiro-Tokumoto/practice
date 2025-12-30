@@ -1,4 +1,4 @@
-export function dhs(a: any, mykey: any, salt: any, name: string, room: string) {
+export function dhs(a: any, mykey: any, salt: any, name: string, room: string,uuid:string) {
     // a.data が存在するかチェック（安全のため）
     const msgData = typeof a.data === "string" ? JSON.parse(a.data) : a;
 
@@ -6,6 +6,7 @@ export function dhs(a: any, mykey: any, salt: any, name: string, room: string) {
         // 文字列にせず、オブジェクトとして返す
         return {
             type: "DH",
+            uuid: uuid,
             name: name,
             room: room,
             salt: salt,
