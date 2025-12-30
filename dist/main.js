@@ -301,29 +301,53 @@ async function main() {
         console.log((await restoreKey(pininput.value)).privateKey);
         console.log((await restoreKey(pininput.value)).publicKey);
         testEd25519Signature((await restoreKey(pininput.value)).privateKey, (await restoreKey(pininput.value)).publicKey);
+        testPublicKeyFetch("2bf3bb52-f110-4883-bac5-8cf575fec632");
     });
-}
-async function testEd25519Signature(privateKey, publicKey) {
-    const encoder = new TextEncoder();
-    // 1. 署名したいメッセージをバイナリ（Uint8Array）に変換
-    const message = "マイン・プロトコル、テスト送信開始！車⭐︎";
-    const data = encoder.encode(message);
-    console.log("📝 署名中...");
-    // 2. 署名実行（Ed25519）
-    const signature = await window.crypto.subtle.sign({ name: "Ed25519" }, privateKey, data);
-    // 署名結果は64バイトのバイナリ
-    const sigHex = Array.from(new Uint8Array(signature))
-        .map(b => b.toString(16).padStart(2, '0')).join('');
-    console.log("✅ 署名完了（64バイトHex）:", sigHex);
-    // 3. 検証実行
-    console.log("🔍 検証中...");
-    const isValid = await window.crypto.subtle.verify({ name: "Ed25519" }, publicKey, signature, data);
-    if (isValid) {
-        console.log("🚀 検証成功！このメッセージは正真正銘、マインさんの鍵で署名されています。");
+    async function testEd25519Signature(privateKey, publicKey) {
+        const encoder = new TextEncoder();
+        // 1. 署名したいメッセージをバイナリ（Uint8Array）に変換
+        const message = "マイン・プロトコル、テスト送信開始！車⭐︎";
+        const data = encoder.encode(message);
+        console.log("📝 署名中...");
+        // 2. 署名実行（Ed25519）
+        const signature = await window.crypto.subtle.sign({ name: "Ed25519" }, privateKey, data);
+        // 署名結果は64バイトのバイナリ
+        const sigHex = Array.from(new Uint8Array(signature))
+            .map(b => b.toString(16).padStart(2, '0')).join('');
+        console.log("✅ 署名完了（64バイトHex）:", sigHex);
+        // 3. 検証実行
+        console.log("🔍 検証中...");
+        const isValid = await window.crypto.subtle.verify({ name: "Ed25519" }, publicKey, signature, data);
+        if (isValid) {
+            console.log("🚀 検証成功！このメッセージは正真正銘、マインさんの鍵で署名されています。");
+        }
+        else {
+            console.error("❌ 検証失敗... 鍵かデータが一致していません。");
+        }
     }
-    else {
-        console.error("❌ 検証失敗... 鍵かデータが一致していません。");
+    // 実験：相手のUUID（画像にあった d1fde...）を使って、公開鍵だけを引っこ抜く
+    async function testPublicKeyFetch(targetUuid) {
+        console.log("🛠️ 実験開始: 窓口(View)からデータ取得を試みます...");
+        const { data, error } = await supabase
+            .from('public_profiles') // 👈 さっき作った View の名前
+            .select('*') // 👈 あえて「全部」リクエストしてみる
+            .eq('uuid', targetUuid)
+            .single();
+        if (error) {
+            console.error("❌ 失敗:", error.message);
+            return;
+        }
+        console.log("🎯 取得できたデータ:", data);
+        // 検証
+        if (data.email === undefined && data.ed25519_private === undefined) {
+            console.log("✅ 成功！メルアドと秘密鍵は物理的に遮断されています。");
+        }
+        else {
+            console.warn("⚠️ 警告: 隠すべきデータが見えてしまっています！");
+        }
     }
+    // 画像のUUIDをコピーして実行してみて！
+    // testPublicKeyFetch('d1fde0ce-da43-4eea-934f-b26c7604ba95');
 }
 // 先ほどのログで出ていた CryptoKey を使って実行
 // testEd25519Signature(yourPrivateKey, yourPublicKey);

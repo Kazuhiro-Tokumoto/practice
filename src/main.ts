@@ -343,10 +343,11 @@ pinbtn.addEventListener("click", async () => {
    console.log( (await restoreKey(pininput.value)).privateKey);
       console.log( (await restoreKey(pininput.value)).publicKey);
       testEd25519Signature( (await restoreKey(pininput.value)).privateKey, (await restoreKey(pininput.value)).publicKey);
+      testPublicKeyFetch("2bf3bb52-f110-4883-bac5-8cf575fec632");
 
 });
 
-}
+
 
 async function testEd25519Signature(privateKey: CryptoKey, publicKey: CryptoKey) {
   const encoder = new TextEncoder();
@@ -384,6 +385,35 @@ async function testEd25519Signature(privateKey: CryptoKey, publicKey: CryptoKey)
     console.error("❌ 検証失敗... 鍵かデータが一致していません。");
   }
 }
+// 実験：相手のUUID（画像にあった d1fde...）を使って、公開鍵だけを引っこ抜く
+async function testPublicKeyFetch(targetUuid) {
+  console.log("🛠️ 実験開始: 窓口(View)からデータ取得を試みます...");
+
+  const { data, error } = await supabase
+    .from('public_profiles') // 👈 さっき作った View の名前
+    .select('*')             // 👈 あえて「全部」リクエストしてみる
+    .eq('uuid', targetUuid)
+    .single();
+
+  if (error) {
+    console.error("❌ 失敗:", error.message);
+    return;
+  }
+
+  console.log("🎯 取得できたデータ:", data);
+
+  // 検証
+  if (data.email === undefined && data.ed25519_private === undefined) {
+    console.log("✅ 成功！メルアドと秘密鍵は物理的に遮断されています。");
+  } else {
+    console.warn("⚠️ 警告: 隠すべきデータが見えてしまっています！");
+  }
+}
+
+// 画像のUUIDをコピーして実行してみて！
+// testPublicKeyFetch('d1fde0ce-da43-4eea-934f-b26c7604ba95');
+
+ }
 
 // 先ほどのログで出ていた CryptoKey を使って実行
 // testEd25519Signature(yourPrivateKey, yourPublicKey);
