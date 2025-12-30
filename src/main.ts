@@ -13,6 +13,37 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { ed25519, x25519 } from 'https://esm.sh/@noble/curves@1.3.0/ed25519';
 // 1. Supabaseの接続設定
 
+// 32バイトのシード（本来はPINから生成）
+const seed = new Uint8Array(32).fill(1); 
+
+// Ed25519の「拡張秘密鍵」から、スカラー値（計算用の数値）を抽出
+// これが X25519 の秘密鍵として使えます
+const myX25519Priv = ed25519.utils.getExtendedPublicKey(seed).scalar;
+
+/**
+ * @param {Uint8Array} edPub - 相手のEd25519公開鍵
+ * @returns {Uint8Array} - 変換後のX25519公開鍵
+ */
+function convertToX25519(edPub) {
+    // 1. 点として読み込む（バイト列から）
+    const point = ed25519.ExtendedPoint.fromRawBytes(edPub);
+    // 2. X座標（モンゴメリ形式）を取り出す
+    return point.toRawX();
+}
+
+// 相手の公開鍵（テスト用）
+const recipientEdPub = ed25519.getPublicKey(new Uint8Array(32).fill(2));
+const recipientXPub = convertToX25519(recipientEdPub);
+
+// 共通鍵（Shared Secret）を生成
+const sharedSecret = x25519.getSharedSecret(myX25519Priv, recipientXPub);
+
+console.log("成功★ 共通鍵:", sharedSecret);
+
+
+
+
+
  async function main() {
       document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
 
