@@ -85,3 +85,41 @@ export async function generateEd25519KeyPair(seed: Uint8Array) {
     // 4. 鍵ペアとして return する
     return { privateKey, publicKey };
 }
+
+export async function generateX25519KeyPair(seed: Uint8Array) {
+    console.log("🛠️ シードから X25519 鍵ペアを復元します...");
+
+    // 1. X25519 用の PKCS#8 ヘッダー (32バイト用)
+    // Ed25519用 (0x2b, 0x65, 0x70) ではなく、X25519用 (0x2b, 0x65, 0x6e) を使います
+    const pkcs8Header = new Uint8Array([
+        0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x6e, 0x04, 0x22, 0x04, 0x20
+    ]);
+    
+    const pkcs8Key = new Uint8Array(pkcs8Header.length + seed.length);
+    pkcs8Key.set(pkcs8Header);
+    pkcs8Key.set(seed, pkcs8Header.length);
+
+    // 2. 秘密鍵をインポート (用途は deriveKey または deriveBits)
+    const privateKey = await window.crypto.subtle.importKey(
+        "pkcs8",
+        pkcs8Key,
+        { name: "X25519" },
+        true,
+        ["deriveKey", "deriveBits"]
+    );
+
+    // 3. 秘密鍵から公開鍵を導出 (JWK経由)
+    const jwk = await window.crypto.subtle.exportKey("jwk", privateKey);
+    delete jwk.d; // 秘密部分を削除
+    jwk.key_ops = []; // X25519公開鍵のopsは空にするのが一般的
+
+    const publicKey = await window.crypto.subtle.importKey(
+        "jwk",
+        jwk,
+        { name: "X25519" },
+        true,
+        [] // 公開鍵側は空の用途でインポート
+    );
+
+    return { privateKey, publicKey };
+}

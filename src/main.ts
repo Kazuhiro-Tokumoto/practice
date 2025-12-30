@@ -1,11 +1,11 @@
 //npx vite build
-import { generateKeyPair, deriveSharedSecret,generateEd25519KeyPair } from "./mojyu-ru/crypto/ecdh.js";
+import { generateKeyPair, deriveSharedSecret,generateEd25519KeyPair,generateX25519KeyPair } from "./mojyu-ru/crypto/ecdh.js";
 import { bufferToHex,arrayBufferToBase64,base64ToUint8Array } from "./mojyu-ru/base64.js"; // 16進数変換のみ残す
 import { generateSalt, combineSalts,generateMasterSeed } from "./mojyu-ru/crypto/saltaes.js";
 import { handleDHMessage } from "./mojyu-ru/dh.js";
 import { dhs } from "./mojyu-ru/joins.js";
 import { deriveAesKeySafe } from "./mojyu-ru/crypto/kdf.js";
-import { decrypt, encrypt ,deriveKeyFromPin} from "./mojyu-ru/crypto/aes.js";
+import { decrypt, encrypt ,deriveKeyFromPin,deriveSharedKey} from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
@@ -14,40 +14,6 @@ import { ed25519, x25519 } from 'https://esm.sh/@noble/curves@1.3.0/ed25519';
 // 1. Supabaseの接続設定
 
 // 32バイトのシード（本来はPINから生成）
-const seed = new Uint8Array(32).fill(1);
-
-// 1. Ed25519の秘密鍵（署名用）
-const edPriv = seed; 
-
-// 2. X25519の秘密鍵（共有鍵生成用）を導出
-// noble-curvesでは getExtendedPublicKey を使ってハッシュ化されたスカラーを得る
-const { scalar: xPriv } = ed25519.utils.getExtendedPublicKey(seed);
-
-
-
-/** 
- * @param {Uint8Array} edPub - 相手のEd25519公開鍵
- * @returns {Uint8Array} - 変換後のX25519公開鍵
-  */
-function convertToX25519(edPub) {
-    // noble-curves v1.x では ed25519.Point を使います
-    const point = ed25519.Point.fromHex(edPub); 
-    // もしくは ed25519.Point.fromRawBytes(edPub)
-    
-    // Ed25519(Edwards) から X25519(Montgomery) への座標変換
-    return point.toRawX();
-}
-// 自分のEd25519シードからX25519秘密鍵を抽出
-const myXPriv = ed25519.utils.getExtendedPublicKey(seed).scalar;
-
-// 相手のEd25519公開鍵をX25519に変換
-const recipientEdPub = ed25519.getPublicKey(new Uint8Array(32).fill(2));
-const recipientXPub = convertToX25519(recipientEdPub);
-
-// 共通鍵生成
-const sharedSecret = x25519.getSharedSecret(myXPriv, recipientXPub);
-
-
  async function main() {
       document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
 
@@ -306,14 +272,17 @@ console.log("✅ 正しく自分を更新できた。出発進行！");
     const seed = new Uint8Array(decryptedBuffer);
 
     const { privateKey, publicKey } = await generateEd25519KeyPair(seed);
+    const { privateKey: xPriv, publicKey: xPub } = await generateX25519KeyPair(seed);
 
     console.log("✨ 復元成功！これで署名ができるようになったぞ。");
-    return { privateKey, publicKey };
+    return { privateKey, publicKey, xPriv, xPub };
   } catch (e) {
     console.error("❌ 復元失敗。PINコードが違うか、データが壊れています:", e);
     throw e;
   }
 }
+
+
 
     const name:string = localStorage.getItem("my_name") ?? "不明なユーザー";
     const storedToken = localStorage.getItem("my_token") ?? "";

@@ -1,4 +1,16 @@
 // crypto/aes.ts
+/**
+ * 自分のX25519秘密鍵と相手のX25519公開鍵からAES鍵を作る
+ */
+export async function deriveSharedKey(myPrivateKey, theirPublicKey) {
+    return await window.crypto.subtle.deriveKey({
+        name: "X25519",
+        public: theirPublicKey,
+    }, myPrivateKey, {
+        name: "AES-GCM",
+        length: 256,
+    }, true, ["encrypt", "decrypt"]);
+}
 export async function encrypt(key, plaintext) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const data = await crypto.subtle.encrypt({
