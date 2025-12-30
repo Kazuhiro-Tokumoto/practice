@@ -315,7 +315,7 @@ async function restoreKey(pin: string) {
     alert("すべての鍵とローカルデータを削除しました。");
 
     // 3. 画面をリロードして初期状態（ログイン前）に戻す
-    location.reload();
+    window.location.assign('https://kazuhiro-tokumoto.github.io/practice');
 }
 
 

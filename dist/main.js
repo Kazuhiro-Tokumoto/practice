@@ -222,7 +222,7 @@ async function main() {
         console.log("✅ 全データの破棄が完了しました。");
         alert("すべての鍵とローカルデータを削除しました。");
         // 3. 画面をリロードして初期状態（ログイン前）に戻す
-        location.reload();
+        window.location.assign('https://kazuhiro-tokumoto.github.io/practice');
     }
     function addBubble(text, isMe) {
         const bubble = document.createElement("div");
