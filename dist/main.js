@@ -463,6 +463,7 @@ async function main() {
         pinbtn.addEventListener("click", async () => {
             pinbtn.style.display = "none";
             pininput.style.display = "none";
+            wipeLink.style.display = "none";
             const keys = await restoreKey(pininput.value);
             const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
             // 中身（Rawデータ）を取り出して比較する例
