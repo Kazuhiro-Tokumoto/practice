@@ -146,6 +146,15 @@ pinContainer.appendChild(pinbtn);
 pinContainer.appendChild(wipeLink);
 document.body.appendChild(pinContainer);
 
+
+    const enemyencyWipeBtn = document.createElement("button");
+    enemyencyWipeBtn.textContent = "削除";
+    enemyencyWipeBtn.style.cssText = "position: fixed; top: 10px; left: 10px; padding: 8px 12px; border-radius: 8px; border: none; background: #ff4444; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
+    document.body.appendChild(enemyencyWipeBtn);
+
+    enemyencyWipeBtn.addEventListener("click", async () => {
+        await emergencyWipe();
+    });
 // 鍵が復元されたらこのコンテナを消す処理を restoreKey の成功時に入れてね
 // pinContainer.style.display = "none";
 
@@ -599,6 +608,7 @@ document.body.appendChild(pinContainer);
     
 
     if (localStorage.getItem("pin") === null) {
+      enemyencyWipeBtn.style.display = "none";
         roomSelection.style.display = "none";
         pininput.addEventListener('input', () => {
             // 数字以外（^0-9）をすべて空文字に置換
@@ -609,6 +619,8 @@ document.body.appendChild(pinContainer);
             pinbtn.style.display = "none";
             pininput.style.display = "none";
           wipeLink.style.display = "none";
+          pinContainer.style.display = "none";
+          enemyencyWipeBtn.style.display = "flex";
 
             const keys = await restoreKey(pininput.value);
             const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
@@ -627,7 +639,9 @@ document.body.appendChild(pinContainer);
     } else {
         pininput.style.display = "none";
         pinbtn.style.display = "none";
-
+        wipeLink.style.display = "none";
+        pinContainer.style.display = "none";
+      enemyencyWipeBtn.style.display = "flex";
         const keys = await restoreKey(localStorage.getItem("pin") || "");
         const keys2 = await restoreKey(localStorage.getItem("pin") || ""); // 再度復元して同じ鍵が出るか確認
         // 中身（Rawデータ）を取り出して比較する例
