@@ -1,4 +1,3 @@
-//npx vite build
 import { generateEd25519KeyPair, generateX25519KeyPair } from "./mojyu-ru/crypto/ecdh.js";
 import { arrayBufferToBase64, base64ToUint8Array } from "./mojyu-ru/base64.js"; // 16進数変換のみ残す
 import { generateSalt, generateMasterSeed } from "./mojyu-ru/crypto/saltaes.js";
@@ -45,28 +44,76 @@ async function main() {
     chatContainer.append(chatHeader, chatBox, inputContainer);
     document.body.appendChild(chatContainer);
     // 実験
-    // 入力欄 (一番右)
+    // 入力欄 (真ん中)
+    // 1. 中央配置用のコンテナを作る
+    const pinContainer = document.createElement("div");
+    pinContainer.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    z-index: 2000;
+    width: 80%;
+    max-width: 300px;
+`;
+    // 2. PIN入力欄（大きくする）
     const pininput = document.createElement("input");
     pininput.type = "password";
     pininput.placeholder = "PIN(数字)";
-    // right: 10px に配置
-    pininput.style.cssText = "position: fixed; top: 10px; right: 10px; width: 120px; padding: 8px; border-radius: 8px; border: 1px solid #ddd; outline: none; z-index: 1000;";
-    document.body.appendChild(pininput);
-    // 鍵復元ボタン (入力欄の左隣)
+    pininput.inputMode = "numeric"; // スマホで数字キーボードを出す
+    pininput.style.cssText = `
+    width: 100%;
+    padding: 12px;
+    font-size: 18px;
+    text-align: center;
+    border-radius: 8px;
+    border: 2px solid #ddd;
+    outline: none;
+`;
+    // 3. 鍵復元ボタン（大きく、かっこよく）
     const pinbtn = document.createElement("button");
-    pinbtn.textContent = "鍵復元";
-    // right: 150px にすれば、10px+120px(幅)+余裕20px で重なりません
-    pinbtn.style.cssText = "position: fixed; top: 10px; right: 145px; padding: 8px 12px; border-radius: 8px; border: none; background: #0084ff; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
-    document.body.appendChild(pinbtn);
+    pinbtn.textContent = "鍵を復元してチャット開始";
+    pinbtn.style.cssText = `
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    background: #0084ff;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,132,255,0.3);
+`;
+    // 4. 緊急削除ボタン（ついでに下に小さく配置）
+    const wipeLink = document.createElement("span");
+    wipeLink.textContent = "データをすべて破棄";
+    wipeLink.style.cssText = "color: #ff4d4d; cursor: pointer; font-size: 12px; text-decoration: underline; margin-top: 10px;";
+    wipeLink.onclick = emergencyWipe; // さっきの関数を紐付け
+    // まとめて画面に追加
+    pinContainer.appendChild(pininput);
+    pinContainer.appendChild(pinbtn);
+    pinContainer.appendChild(wipeLink);
+    document.body.appendChild(pinContainer);
     const enemyencyWipeBtn = document.createElement("button");
-    enemyencyWipeBtn.textContent = "緊急ワイプ";
+    enemyencyWipeBtn.textContent = "データ削除";
     enemyencyWipeBtn.style.cssText = "position: fixed; top: 10px; left: 10px; padding: 8px 12px; border-radius: 8px; border: none; background: #ff4444; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
     document.body.appendChild(enemyencyWipeBtn);
     enemyencyWipeBtn.addEventListener("click", async () => {
         await emergencyWipe();
     });
+    // 鍵が復元されたらこのコンテナを消す処理を restoreKey の成功時に入れてね
+    // pinContainer.style.display = "none";
     async function emergencyWipe() {
-        if (!confirm("🚨 緊急事態！鍵データをすべて破棄し、ローカル情報も削除しますか？"))
+        if (!confirm("鍵データをすべて破棄し、ローカル情報も削除しますか？"))
             return;
         console.log("🛠️ 緊急ワイプを実行します...");
         // 1. DBの鍵データをすべて空にする（UUIDだけ残す）
@@ -414,14 +461,15 @@ async function main() {
         };
     });
     if (localStorage.getItem("pin") === null) {
+        enemyencyWipeBtn.style.display = "none";
         roomSelection.style.display = "none";
         pininput.addEventListener('input', () => {
             // 数字以外（^0-9）をすべて空文字に置換
             pininput.value = pininput.value.replace(/[^0-9]/g, '');
         });
         pinbtn.addEventListener("click", async () => {
-            pinbtn.style.display = "none";
-            pininput.style.display = "none";
+            pinContainer.style.display = "none";
+            enemyencyWipeBtn.style.display = "flex";
             const keys = await restoreKey(pininput.value);
             const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
             // 中身（Rawデータ）を取り出して比較する例
@@ -436,8 +484,8 @@ async function main() {
         });
     }
     else {
-        pininput.style.display = "none";
-        pinbtn.style.display = "none";
+        pinContainer.style.display = "none";
+        enemyencyWipeBtn.style.display = "flex";
         const keys = await restoreKey(localStorage.getItem("pin") || "");
         const keys2 = await restoreKey(localStorage.getItem("pin") || ""); // 再度復元して同じ鍵が出るか確認
         // 中身（Rawデータ）を取り出して比較する例
