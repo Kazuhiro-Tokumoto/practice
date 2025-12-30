@@ -300,6 +300,31 @@ async function main() {
         await restoreKey(pininput.value);
         console.log((await restoreKey(pininput.value)).privateKey);
         console.log((await restoreKey(pininput.value)).publicKey);
+        testEd25519Signature((await restoreKey(pininput.value)).privateKey, (await restoreKey(pininput.value)).publicKey);
     });
 }
+async function testEd25519Signature(privateKey, publicKey) {
+    const encoder = new TextEncoder();
+    // 1. 署名したいメッセージをバイナリ（Uint8Array）に変換
+    const message = "マイン・プロトコル、テスト送信開始！車⭐︎";
+    const data = encoder.encode(message);
+    console.log("📝 署名中...");
+    // 2. 署名実行（Ed25519）
+    const signature = await window.crypto.subtle.sign({ name: "Ed25519" }, privateKey, data);
+    // 署名結果は64バイトのバイナリ
+    const sigHex = Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log("✅ 署名完了（64バイトHex）:", sigHex);
+    // 3. 検証実行
+    console.log("🔍 検証中...");
+    const isValid = await window.crypto.subtle.verify({ name: "Ed25519" }, publicKey, signature, data);
+    if (isValid) {
+        console.log("🚀 検証成功！このメッセージは正真正銘、マインさんの鍵で署名されています。");
+    }
+    else {
+        console.error("❌ 検証失敗... 鍵かデータが一致していません。");
+    }
+}
+// 先ほどのログで出ていた CryptoKey を使って実行
+// testEd25519Signature(yourPrivateKey, yourPublicKey);
 main();
