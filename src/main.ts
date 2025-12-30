@@ -46,6 +46,28 @@ import {
 
 // 32バイトのシード（本来はPINから生成）
 async function main() {
+
+      const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
+    const name: string = localStorage.getItem("my_name") ?? "不明なユーザー";
+    const storedToken = localStorage.getItem("my_token") ?? "";
+    const storedUuid = localStorage.getItem("my_uuid") ?? "";
+    const wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
+    let room: string;
+    let aeskey: CryptoKey | null = null;
+    let anoskey: CryptoKey;
+
+    // DB用のパスワードとなんか、　まぁええやろ
+    const supabase = createClient(
+        'https://cedpfdoanarzyxcroymc.supabase.co',
+        'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${storedToken}`,
+                },
+            },
+        }
+    );
+
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
 
     const roomSelection = document.createElement("div");
@@ -481,29 +503,6 @@ document.body.appendChild(pinContainer);
             throw e;
         }
     }
-    const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
-    const name: string = localStorage.getItem("my_name") ?? "不明なユーザー";
-    const storedToken = localStorage.getItem("my_token") ?? "";
-    const storedUuid = localStorage.getItem("my_uuid") ?? "";
-    const wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
-    let room: string;
-    let aeskey: CryptoKey | null = null;
-    let pin: number;
-    const salt: Uint8Array = generateSalt();
-    const base64salt = await arrayBufferToBase64(salt);
-    let anoskey: CryptoKey;
-
-    // DB用のパスワードとなんか、　まぁええやろ
-    const supabase = createClient(
-        'https://cedpfdoanarzyxcroymc.supabase.co',
-        'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
-            global: {
-                headers: {
-                    Authorization: `Bearer ${storedToken}`,
-                },
-            },
-        }
-    );
 
 
 
