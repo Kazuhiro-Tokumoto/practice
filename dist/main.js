@@ -16,7 +16,7 @@ const seed = new Uint8Array(32).fill(1);
 // 2. 秘密鍵シード（32バイト）から公開鍵を作る
 const pubKey = ed25519.getPublicKey(seed);
 // 3. モンゴメリ形式（X25519用）に変換
-const xPub = ed25519.utils.toMontgomery(pubKey);
+const xPub = ed25519.etc.toMontgomery(pubKey);
 const base64Pub = await arrayBufferToBase64(xPub);
 console.log("変換後のX25519公開鍵 (Base64):", base64Pub);
 console.log("これでエラーなく動くはず！");
