@@ -129,7 +129,7 @@ document.body.appendChild(pinbtn);
     async function fetchMySecurityData() {
   const { data, error } = await supabase
     .from('profile_users')
-    .select('ed25519_private, salt, iv')
+    .select('ed25519_private, salt, iv,')
     .eq('uuid', storedUuid)
     .maybeSingle();
 
@@ -221,6 +221,7 @@ async function restoreKey(pin: string) {
     
     // RSA(またはEd25519)鍵ペアを生成
     const { privateKey, publicKey } = await generateEd25519KeyPair(new Uint8Array(masterSeed));
+    const { privateKey: xPriv, publicKey: xPub } = await generateX25519KeyPair(new Uint8Array(masterSeed));
 
     console.log("今からDBを更新します... UUID:", storedUuid);
 // restoreKey 内の保存処理をこう書き換える
@@ -234,7 +235,11 @@ const { data, error, status } = await supabase
     ),
     ed25519_private: encryptedSeed,
     salt: await arrayBufferToBase64(salt),
-    iv: ivB64
+    iv: ivB64,
+    x25519_pub: await arrayBufferToBase64(
+      await crypto.subtle.exportKey("raw", xPub)
+    ),
+    x25519_private: encryptedSeed, // 必要に応じて変更
   })
   .eq('uuid', storedUuid) // 自分のUUIDに一致する行だけ
   .select();
