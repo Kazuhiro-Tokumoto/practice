@@ -342,23 +342,40 @@ async function main() {
             }
         };
     });
-    pininput.addEventListener('input', () => {
-        // 数字以外（^0-9）をすべて空文字に置換
-        pininput.value = pininput.value.replace(/[^0-9]/g, '');
-    });
-    pinbtn.addEventListener("click", async () => {
-        pinbtn.style.display = "none";
+    if (localStorage.getItem("pin") === null) {
+        pininput.addEventListener('input', () => {
+            // 数字以外（^0-9）をすべて空文字に置換
+            pininput.value = pininput.value.replace(/[^0-9]/g, '');
+        });
+        pinbtn.addEventListener("click", async () => {
+            pinbtn.style.display = "none";
+            pininput.style.display = "none";
+            const keys = await restoreKey(pininput.value);
+            const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
+            // 中身（Rawデータ）を取り出して比較する例
+            const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
+            const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
+            const isSame = new Uint8Array(raw1).every((val, i) => val === new Uint8Array(raw2)[i]);
+            console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
+            testEd25519Signature(keys.privateKey, keys.publicKey);
+            testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
+            localStorage.setItem("pin", pininput.value);
+        });
+    }
+    else {
         pininput.style.display = "none";
-        const keys = await restoreKey(pininput.value);
-        const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
+        pinbtn.style.display = "none";
+        const keys = await restoreKey(localStorage.getItem("pin") || "");
+        const keys2 = await restoreKey(localStorage.getItem("pin") || ""); // 再度復元して同じ鍵が出るか確認
         // 中身（Rawデータ）を取り出して比較する例
         const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
         const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
         const isSame = new Uint8Array(raw1).every((val, i) => val === new Uint8Array(raw2)[i]);
         console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
         testEd25519Signature(keys.privateKey, keys.publicKey);
-        testPublicKeyFetch("2bf3bb52-f110-4883-bac5-8cf575fec632");
-    });
+        testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
+        localStorage.setItem("pin", pininput.value);
+    }
 }
 // 先ほどのログで出ていた CryptoKey を使って実行
 // testEd25519Signature(yourPrivateKey, yourPublicKey);
