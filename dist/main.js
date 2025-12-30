@@ -20,12 +20,14 @@ const edPriv = seed;
 // noble-curvesでは getExtendedPublicKey を使ってハッシュ化されたスカラーを得る
 const { scalar: xPriv } = ed25519.utils.getExtendedPublicKey(seed);
 /**
- * Ed25519公開鍵をX25519公開鍵に変換する
- */
+ * @param {Uint8Array} edPub - 相手のEd25519公開鍵
+ * @returns {Uint8Array} - 変換後のX25519公開鍵
+  */
 function convertToX25519(edPub) {
-    // Ed25519のバイト列から点オブジェクトを作成
-    const point = ed25519.ExtendedPoint.fromRawBytes(edPub);
-    // Birational equivalence（双有理同値）に基づき、X25519(Montgomery)のu座標に変換
+    // noble-curves v1.x では ed25519.Point を使います
+    const point = ed25519.Point.fromHex(edPub);
+    // もしくは ed25519.Point.fromRawBytes(edPub)
+    // Ed25519(Edwards) から X25519(Montgomery) への座標変換
     return point.toRawX();
 }
 // 自分のEd25519シードからX25519秘密鍵を抽出
