@@ -108,6 +108,21 @@ async function main() {
     enemyencyWipeBtn.style.cssText = "position: fixed; top: 10px; left: 10px; padding: 8px 12px; border-radius: 8px; border: none; background: #ff4444; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
     enemyencyWipeBtn.onclick = emergencyWipe;
     document.body.appendChild(enemyencyWipeBtn);
+    const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
+    const name = localStorage.getItem("my_name") ?? "不明なユーザー";
+    const storedToken = localStorage.getItem("my_token") ?? "";
+    const storedUuid = localStorage.getItem("my_uuid") ?? "";
+    const wss = new WebSocket("wss://mail.shudo-physics.com/");
+    let room;
+    let aeskey = null;
+    let anoskey;
+    const supabase = createClient('https://cedpfdoanarzyxcroymc.supabase.co', 'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
+        global: {
+            headers: {
+                Authorization: `Bearer ${storedToken}`,
+            },
+        },
+    });
     // 鍵が復元されたらこのコンテナを消す処理を restoreKey の成功時に入れてね
     // pinContainer.style.display = "none";
     async function emergencyWipe() {
@@ -346,21 +361,6 @@ async function main() {
             console.error("送信時の暗号化に失敗しました:", e);
         }
     }
-    const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
-    const name = localStorage.getItem("my_name") ?? "不明なユーザー";
-    const storedToken = localStorage.getItem("my_token") ?? "";
-    const storedUuid = localStorage.getItem("my_uuid") ?? "";
-    const wss = new WebSocket("wss://mail.shudo-physics.com/");
-    let room;
-    let aeskey = null;
-    let anoskey;
-    const supabase = createClient('https://cedpfdoanarzyxcroymc.supabase.co', 'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
-        global: {
-            headers: {
-                Authorization: `Bearer ${storedToken}`,
-            },
-        },
-    });
     // DB用のパスワードとなんか、　まぁええやろ
     if (storedToken === "") {
         window.location.href = "../index.html";
