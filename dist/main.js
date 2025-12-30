@@ -6,9 +6,7 @@ import { dhs } from "./mojyu-ru/joins.js";
 import { decrypt, encrypt, deriveKeyFromPin, deriveSharedKey } from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
-import { createClient
-// @ts-ignore
- } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 // 1. 
 // Supabaseの接続設定
 // 32バイトのシード（本来はPINから生成）
@@ -140,38 +138,6 @@ async function main() {
         alert("すべての鍵とローカルデータを削除しました。");
         // 3. 画面をリロードして初期状態（ログイン前）に戻す
         location.reload();
-    }
-    async function sendEncryptedMessage(text, aeskey) {
-        if (!aeskey) {
-            console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
-            return;
-        }
-        try {
-            const encoder = new TextEncoder();
-            const plaintext = encoder.encode(text);
-            const encrypted = await encrypt(aeskey, plaintext);
-            // ★並列で高速変換
-            const [ivB64, dataB64] = await Promise.all([
-                arrayBufferToBase64(encrypted.iv),
-                arrayBufferToBase64(encrypted.data)
-            ]);
-            const sig = await ed25519Handler(1, restoreKeys.privateKey, dataB64);
-            const msg = {
-                type: "message",
-                room: room,
-                name: name,
-                uuid: storedUuid,
-                iv: ivB64,
-                data: dataB64,
-                sig: sig
-            };
-            wss.send(JSON.stringify(msg));
-            console.log(`%c[送信完了]: ${text}`, "color: #00bfff; font-weight: bold;");
-            addBubble(text, true);
-        }
-        catch (e) {
-            console.error("送信時の暗号化に失敗しました:", e);
-        }
     }
     function addBubble(text, isMe) {
         const bubble = document.createElement("div");
@@ -346,6 +312,38 @@ async function main() {
         catch (e) {
             console.error("❌ 復元失敗。PINコードが違うか、データが壊れています:", e);
             throw e;
+        }
+    }
+    async function sendEncryptedMessage(text, aeskey) {
+        if (!aeskey) {
+            console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
+            return;
+        }
+        try {
+            const encoder = new TextEncoder();
+            const plaintext = encoder.encode(text);
+            const encrypted = await encrypt(aeskey, plaintext);
+            // ★並列で高速変換
+            const [ivB64, dataB64] = await Promise.all([
+                arrayBufferToBase64(encrypted.iv),
+                arrayBufferToBase64(encrypted.data)
+            ]);
+            const sig = await ed25519Handler(1, restoreKeys.privateKey, dataB64);
+            const msg = {
+                type: "message",
+                room: room,
+                name: name,
+                uuid: storedUuid,
+                iv: ivB64,
+                data: dataB64,
+                sig: sig
+            };
+            wss.send(JSON.stringify(msg));
+            console.log(`%c[送信完了]: ${text}`, "color: #00bfff; font-weight: bold;");
+            addBubble(text, true);
+        }
+        catch (e) {
+            console.error("送信時の暗号化に失敗しました:", e);
         }
     }
     const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");

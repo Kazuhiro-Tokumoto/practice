@@ -194,42 +194,7 @@ document.body.appendChild(pinContainer);
 }
 
 
-
-    async function sendEncryptedMessage(text: string, aeskey: CryptoKey) {
-        if (!aeskey) {
-            console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
-            return;
-        }
-        try {
-            const encoder = new TextEncoder();
-            const plaintext = encoder.encode(text);
-            const encrypted = await encrypt(aeskey, plaintext);
-
-            // ★並列で高速変換
-            const [ivB64, dataB64] = await Promise.all([
-                arrayBufferToBase64(encrypted.iv),
-                arrayBufferToBase64(encrypted.data)
-            ]);
-            const sig = await ed25519Handler(1, restoreKeys.privateKey, dataB64);
-
-            const msg = {
-                type: "message",
-                room: room,
-                name: name,
-                uuid: storedUuid,
-                iv: ivB64,
-                data: dataB64,
-                sig : sig
-            };
-            wss.send(JSON.stringify(msg));
-            console.log(`%c[送信完了]: ${text}`, "color: #00bfff; font-weight: bold;");
-            addBubble(text, true);
-        } catch (e) {
-            console.error("送信時の暗号化に失敗しました:", e);
-        }
-    }
-
-    function addBubble(text: string, isMe: boolean) {
+  function addBubble(text: string, isMe: boolean) {
         const bubble = document.createElement("div");
         const M: boolean = isMe;
         bubble.style.cssText = `
@@ -480,6 +445,43 @@ document.body.appendChild(pinContainer);
             throw e;
         }
     }
+
+
+    async function sendEncryptedMessage(text: string, aeskey: CryptoKey) {
+        if (!aeskey) {
+            console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
+            return;
+        }
+        try {
+            const encoder = new TextEncoder();
+            const plaintext = encoder.encode(text);
+            const encrypted = await encrypt(aeskey, plaintext);
+
+            // ★並列で高速変換
+            const [ivB64, dataB64] = await Promise.all([
+                arrayBufferToBase64(encrypted.iv),
+                arrayBufferToBase64(encrypted.data)
+            ]);
+            const sig = await ed25519Handler(1, restoreKeys.privateKey, dataB64);
+
+            const msg = {
+                type: "message",
+                room: room,
+                name: name,
+                uuid: storedUuid,
+                iv: ivB64,
+                data: dataB64,
+                sig : sig
+            };
+            wss.send(JSON.stringify(msg));
+            console.log(`%c[送信完了]: ${text}`, "color: #00bfff; font-weight: bold;");
+            addBubble(text, true);
+        } catch (e) {
+            console.error("送信時の暗号化に失敗しました:", e);
+        }
+    }
+
+  
     const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
     const name: string = localStorage.getItem("my_name") ?? "不明なユーザー";
     const storedToken = localStorage.getItem("my_token") ?? "";
