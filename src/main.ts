@@ -211,6 +211,7 @@ document.body.appendChild(pinContainer);
                 arrayBufferToBase64(encrypted.iv),
                 arrayBufferToBase64(encrypted.data)
             ]);
+            const sig = await ed25519Handler(1, restoreKeys.privateKey, dataB64);
 
             const msg = {
                 type: "message",
@@ -218,7 +219,8 @@ document.body.appendChild(pinContainer);
                 name: name,
                 uuid: storedUuid,
                 iv: ivB64,
-                data: dataB64
+                data: dataB64,
+                sig : sig
             };
             wss.send(JSON.stringify(msg));
             console.log(`%c[送信完了]: ${text}`, "color: #00bfff; font-weight: bold;");
@@ -274,6 +276,33 @@ document.body.appendChild(pinContainer);
 
         return data;
     }
+
+
+    async function ed25519Handler(mode, key, dataB64, sigB64 = "") {
+    const encoder = new TextEncoder();
+    const dataUint8 = encoder.encode(dataB64);
+
+    if (mode === 1) {
+        // --- モード1: 署名作成 ---
+        const signature = await window.crypto.subtle.sign(
+            { name: "Ed25519" },
+            key, // ed25519_private
+            dataUint8
+        );
+        return await arrayBufferToBase64(signature);
+
+    } else if (mode === 2) {
+        // --- モード2: 署名検証 ---
+        const sigUint8 = await base64ToUint8Array(sigB64);
+        const isValid = await window.crypto.subtle.verify(
+            { name: "Ed25519" },
+            key, // ed25519_pub
+            sigUint8 as BufferSource,
+            dataUint8
+        );
+        return isValid; // true か false を返す
+    }
+}
 
 
     async function testEd25519Signature(privateKey: CryptoKey, publicKey: CryptoKey) {
@@ -452,9 +481,7 @@ document.body.appendChild(pinContainer);
             throw e;
         }
     }
-
-
-
+    const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
     const name: string = localStorage.getItem("my_name") ?? "不明なユーザー";
     const storedToken = localStorage.getItem("my_token") ?? "";
     const storedUuid = localStorage.getItem("my_uuid") ?? "";
@@ -464,6 +491,7 @@ document.body.appendChild(pinContainer);
     let pin: number;
     const salt: Uint8Array = generateSalt();
     const base64salt = await arrayBufferToBase64(salt);
+    let anoskey: CryptoKey;
 
     // DB用のパスワードとなんか、　まぁええやろ
     const supabase = createClient(
@@ -576,7 +604,7 @@ document.body.appendChild(pinContainer);
                             true,
                             []
                         );
-
+                        anoskey = theirPublicKey;
                         // 4. これでようやく「合体」！
                         aeskey = await deriveSharedKey(keys.xPriv, theirPublicKey);
                         console.log("✨ 共通鍵の合体に成功！");
@@ -595,6 +623,12 @@ document.body.appendChild(pinContainer);
                         base64ToUint8Array(data.iv),
                         base64ToUint8Array(data.data)
                     ]);
+                    const sig = await ed25519Handler(2, anoskey, data.sig);
+                    console.log("署名検証結果:", sig);
+                    if (sig === false) {
+                        console.error("署名検証失敗");
+                        return;
+                    }
                     const decryptedArray = await decrypt(aeskey, iv, encryptedContent.buffer as ArrayBuffer);
                     const messageText = new TextDecoder().decode(decryptedArray);
                     addBubble(messageText, false);

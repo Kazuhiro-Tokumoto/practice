@@ -156,13 +156,15 @@ async function main() {
                 arrayBufferToBase64(encrypted.iv),
                 arrayBufferToBase64(encrypted.data)
             ]);
+            const sig = await ed25519Handler(1, restoreKeys.privateKey, dataB64);
             const msg = {
                 type: "message",
                 room: room,
                 name: name,
                 uuid: storedUuid,
                 iv: ivB64,
-                data: dataB64
+                data: dataB64,
+                sig: sig
             };
             wss.send(JSON.stringify(msg));
             console.log(`%c[送信完了]: ${text}`, "color: #00bfff; font-weight: bold;");
@@ -210,6 +212,23 @@ async function main() {
             return null;
         }
         return data;
+    }
+    async function ed25519Handler(mode, key, dataB64, sigB64 = "") {
+        const encoder = new TextEncoder();
+        const dataUint8 = encoder.encode(dataB64);
+        if (mode === 1) {
+            // --- モード1: 署名作成 ---
+            const signature = await window.crypto.subtle.sign({ name: "Ed25519" }, key, // ed25519_private
+            dataUint8);
+            return await arrayBufferToBase64(signature);
+        }
+        else if (mode === 2) {
+            // --- モード2: 署名検証 ---
+            const sigUint8 = await base64ToUint8Array(sigB64);
+            const isValid = await window.crypto.subtle.verify({ name: "Ed25519" }, key, // ed25519_pub
+            sigUint8, dataUint8);
+            return isValid; // true か false を返す
+        }
     }
     async function testEd25519Signature(privateKey, publicKey) {
         const encoder = new TextEncoder();
@@ -330,6 +349,7 @@ async function main() {
             throw e;
         }
     }
+    const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
     const name = localStorage.getItem("my_name") ?? "不明なユーザー";
     const storedToken = localStorage.getItem("my_token") ?? "";
     const storedUuid = localStorage.getItem("my_uuid") ?? "";
@@ -339,6 +359,7 @@ async function main() {
     let pin;
     const salt = generateSalt();
     const base64salt = await arrayBufferToBase64(salt);
+    let anoskey;
     // DB用のパスワードとなんか、　まぁええやろ
     const supabase = createClient('https://cedpfdoanarzyxcroymc.supabase.co', 'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
         global: {
@@ -431,6 +452,7 @@ async function main() {
                         const theirPublicKey = await window.crypto.subtle.importKey("raw", peerRawPubKey, {
                             name: "X25519"
                         }, true, []);
+                        anoskey = theirPublicKey;
                         // 4. これでようやく「合体」！
                         aeskey = await deriveSharedKey(keys.xPriv, theirPublicKey);
                         console.log("✨ 共通鍵の合体に成功！");
@@ -451,6 +473,12 @@ async function main() {
                         base64ToUint8Array(data.iv),
                         base64ToUint8Array(data.data)
                     ]);
+                    const sig = await ed25519Handler(2, anoskey, data.sig);
+                    console.log("署名検証結果:", sig);
+                    if (sig === false) {
+                        console.error("署名検証失敗");
+                        return;
+                    }
                     const decryptedArray = await decrypt(aeskey, iv, encryptedContent.buffer);
                     const messageText = new TextDecoder().decode(decryptedArray);
                     addBubble(messageText, false);
