@@ -81,6 +81,21 @@ async function main() {
     chatContainer.append(chatHeader, chatBox, inputContainer);
     document.body.appendChild(chatContainer);
     // 実験
+    const name: string = localStorage.getItem("my_name") ?? "不明なユーザー";
+    const storedToken = localStorage.getItem("my_token") ?? "";
+    const storedUuid = localStorage.getItem("my_uuid") ?? "";
+    const supabase = createClient(
+
+        'https://cedpfdoanarzyxcroymc.supabase.co',
+        'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${storedToken}`,
+                },
+            },
+        }
+    );
+
     // 入力欄 (真ん中)
 
 // 1. 中央配置用のコンテナを作る
@@ -145,32 +160,125 @@ pinContainer.appendChild(pininput);
 pinContainer.appendChild(pinbtn);
 pinContainer.appendChild(wipeLink);
 document.body.appendChild(pinContainer);
+async function restoreKey(pin: string) {
+        // 1. DBからデータを取得
+        const dbData = await fetchMySecurityData() as any;
 
+        // --- 【新規登録ルート】DBにデータがない場合 ---
+        if (!dbData || dbData.salt === null) {
+            console.log("欄はあるけど中身が空だね。今から鍵を作って登録するよ！");
+            const salt: Uint8Array = generateSalt();
+            const masterSeed = generateMasterSeed(32);
+            const aesKey = await deriveKeyFromPin(pin.toString(), salt);
+            const encrypted = await encrypt(aesKey, masterSeed.buffer as ArrayBuffer);
+
+            const ivB64 = await arrayBufferToBase64(encrypted.iv);
+            const encryptedSeed = await arrayBufferToBase64(encrypted.data);
+
+            // RSA(またはEd25519)鍵ペアを生成
+            const {
+                privateKey,
+                publicKey
+            } = await generateEd25519KeyPair(new Uint8Array(masterSeed));
+            const {
+                privateKey: xPriv,
+                publicKey: xPub
+            } = await generateX25519KeyPair(new Uint8Array(masterSeed));
+
+            console.log("今からDBを更新します... UUID:", storedUuid);
+            // restoreKey 内の保存処理をこう書き換える
+            console.log("🛠️ 既存の自分を更新します... UUID:", storedUuid);
+
+            const {
+                data,
+                error,
+                status
+            } = await supabase
+                .from('profile_users')
+                .update({ // upsert ではなく update
+                    ed25519_pub: await arrayBufferToBase64(
+                        await crypto.subtle.exportKey("raw", publicKey)
+                    ),
+                    ed25519_private: encryptedSeed,
+                    salt: await arrayBufferToBase64(salt),
+                    iv: ivB64,
+                    x25519_pub: await arrayBufferToBase64(
+                        await crypto.subtle.exportKey("raw", xPub)
+                    )
+                })
+                .eq('uuid', storedUuid) // 自分のUUIDに一致する行だけ
+                .select();
+
+            // 「なかったら降りる」判定
+            if (error) {
+                console.error("❌ 通信エラーで降りるよ:", error.message);
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                console.error("🚨 DBに自分の行がない！不正なアクセスか、登録が漏れてるからここで降りるよ！");
+                return; // 勝手に作らずに終了
+            }
+
+            console.log("✅ 正しく自分を更新できた。出発進行！");
+
+            return {
+                privateKey,
+                publicKey
+            }; // ここで新規登録時は終了
+        }
+
+        // --- 【復元ルート】DBにデータがある場合 ---
+        console.log("DBから鍵を復元中...");
+        try {
+            const salt = await base64ToUint8Array(dbData.salt);
+            const iv = await base64ToUint8Array(dbData.iv);
+            const encryptedSeed = await base64ToUint8Array(dbData.ed25519_private);
+
+            const aesKey = await deriveKeyFromPin(pin, salt);
+
+            const decryptedBuffer = await crypto.subtle.decrypt({
+                    name: "AES-GCM",
+                    iv: iv.buffer as ArrayBuffer
+                },
+                aesKey,
+                encryptedSeed.buffer as ArrayBuffer
+            );
+            const seed = new Uint8Array(decryptedBuffer);
+
+            const {
+                privateKey,
+                publicKey
+            } = await generateEd25519KeyPair(seed);
+            const {
+                privateKey: xPriv,
+                publicKey: xPub
+            } = await generateX25519KeyPair(seed);
+
+            console.log("✨ 復元成功！これで署名ができるようになったぞ。");
+            return {
+                privateKey,
+                publicKey,
+                xPriv,
+                xPub
+            };
+        } catch (e) {
+            console.error("❌ 復元失敗。PINコードが違うか、データが壊れています:", e);
+            throw e;
+        }
+    }
 
     const enemyencyWipeBtn = document.createElement("button");
     enemyencyWipeBtn.textContent = "データ削除";
     enemyencyWipeBtn.style.cssText = "position: fixed; top: 10px; left: 10px; padding: 8px 12px; border-radius: 8px; border: none; background: #ff4444; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
         enemyencyWipeBtn.onclick = emergencyWipe;
     document.body.appendChild(enemyencyWipeBtn);
+
         const restoreKeys = await restoreKey(localStorage.getItem("pin") || "");
-    const name: string = localStorage.getItem("my_name") ?? "不明なユーザー";
-    const storedToken = localStorage.getItem("my_token") ?? "";
-    const storedUuid = localStorage.getItem("my_uuid") ?? "";
     const wss: WebSocket = new WebSocket("wss://mail.shudo-physics.com/");
     let room: string;
     let aeskey: CryptoKey | null = null;
     let anoskey: CryptoKey;
-const supabase = createClient(
-
-        'https://cedpfdoanarzyxcroymc.supabase.co',
-        'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
-            global: {
-                headers: {
-                    Authorization: `Bearer ${storedToken}`,
-                },
-            },
-        }
-    );
 
 
 // 鍵が復元されたらこのコンテナを消す処理を restoreKey の成功時に入れてね
@@ -357,113 +465,7 @@ const supabase = createClient(
     }
 
 
-    async function restoreKey(pin: string) {
-        // 1. DBからデータを取得
-        const dbData = await fetchMySecurityData() as any;
-
-        // --- 【新規登録ルート】DBにデータがない場合 ---
-        if (!dbData || dbData.salt === null) {
-            console.log("欄はあるけど中身が空だね。今から鍵を作って登録するよ！");
-            const salt: Uint8Array = generateSalt();
-            const masterSeed = generateMasterSeed(32);
-            const aesKey = await deriveKeyFromPin(pin.toString(), salt);
-            const encrypted = await encrypt(aesKey, masterSeed.buffer as ArrayBuffer);
-
-            const ivB64 = await arrayBufferToBase64(encrypted.iv);
-            const encryptedSeed = await arrayBufferToBase64(encrypted.data);
-
-            // RSA(またはEd25519)鍵ペアを生成
-            const {
-                privateKey,
-                publicKey
-            } = await generateEd25519KeyPair(new Uint8Array(masterSeed));
-            const {
-                privateKey: xPriv,
-                publicKey: xPub
-            } = await generateX25519KeyPair(new Uint8Array(masterSeed));
-
-            console.log("今からDBを更新します... UUID:", storedUuid);
-            // restoreKey 内の保存処理をこう書き換える
-            console.log("🛠️ 既存の自分を更新します... UUID:", storedUuid);
-
-            const {
-                data,
-                error,
-                status
-            } = await supabase
-                .from('profile_users')
-                .update({ // upsert ではなく update
-                    ed25519_pub: await arrayBufferToBase64(
-                        await crypto.subtle.exportKey("raw", publicKey)
-                    ),
-                    ed25519_private: encryptedSeed,
-                    salt: await arrayBufferToBase64(salt),
-                    iv: ivB64,
-                    x25519_pub: await arrayBufferToBase64(
-                        await crypto.subtle.exportKey("raw", xPub)
-                    )
-                })
-                .eq('uuid', storedUuid) // 自分のUUIDに一致する行だけ
-                .select();
-
-            // 「なかったら降りる」判定
-            if (error) {
-                console.error("❌ 通信エラーで降りるよ:", error.message);
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                console.error("🚨 DBに自分の行がない！不正なアクセスか、登録が漏れてるからここで降りるよ！");
-                return; // 勝手に作らずに終了
-            }
-
-            console.log("✅ 正しく自分を更新できた。出発進行！");
-
-            return {
-                privateKey,
-                publicKey
-            }; // ここで新規登録時は終了
-        }
-
-        // --- 【復元ルート】DBにデータがある場合 ---
-        console.log("DBから鍵を復元中...");
-        try {
-            const salt = await base64ToUint8Array(dbData.salt);
-            const iv = await base64ToUint8Array(dbData.iv);
-            const encryptedSeed = await base64ToUint8Array(dbData.ed25519_private);
-
-            const aesKey = await deriveKeyFromPin(pin, salt);
-
-            const decryptedBuffer = await crypto.subtle.decrypt({
-                    name: "AES-GCM",
-                    iv: iv.buffer as ArrayBuffer
-                },
-                aesKey,
-                encryptedSeed.buffer as ArrayBuffer
-            );
-            const seed = new Uint8Array(decryptedBuffer);
-
-            const {
-                privateKey,
-                publicKey
-            } = await generateEd25519KeyPair(seed);
-            const {
-                privateKey: xPriv,
-                publicKey: xPub
-            } = await generateX25519KeyPair(seed);
-
-            console.log("✨ 復元成功！これで署名ができるようになったぞ。");
-            return {
-                privateKey,
-                publicKey,
-                xPriv,
-                xPub
-            };
-        } catch (e) {
-            console.error("❌ 復元失敗。PINコードが違うか、データが壊れています:", e);
-            throw e;
-        }
-    }
+    
 
 
     async function sendEncryptedMessage(text: string, aeskey: CryptoKey) {
