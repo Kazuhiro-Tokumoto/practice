@@ -1,14 +1,14 @@
 //npx vite build
-import { generateKeyPair, generateEd25519KeyPair, generateX25519KeyPair } from "./mojyu-ru/crypto/ecdh.js";
+import { generateEd25519KeyPair, generateX25519KeyPair } from "./mojyu-ru/crypto/ecdh.js";
 import { arrayBufferToBase64, base64ToUint8Array } from "./mojyu-ru/base64.js"; // 16進数変換のみ残す
-import { generateSalt, combineSalts, generateMasterSeed } from "./mojyu-ru/crypto/saltaes.js";
-import { handleDHMessage } from "./mojyu-ru/dh.js";
+import { generateSalt, generateMasterSeed } from "./mojyu-ru/crypto/saltaes.js";
 import { dhs } from "./mojyu-ru/joins.js";
-import { deriveAesKeySafe } from "./mojyu-ru/crypto/kdf.js";
-import { decrypt, encrypt, deriveKeyFromPin } from "./mojyu-ru/crypto/aes.js";
+import { decrypt, encrypt, deriveKeyFromPin, deriveSharedKey } from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createClient
+// @ts-ignore
+ } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 // 1. Supabaseの接続設定
 // 32バイトのシード（本来はPINから生成）
 async function main() {
@@ -58,6 +58,42 @@ async function main() {
     // right: 150px にすれば、10px+120px(幅)+余裕20px で重なりません
     pinbtn.style.cssText = "position: fixed; top: 10px; right: 145px; padding: 8px 12px; border-radius: 8px; border: none; background: #0084ff; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
     document.body.appendChild(pinbtn);
+    const enemyencyWipeBtn = document.createElement("button");
+    enemyencyWipeBtn.textContent = "緊急ワイプ";
+    enemyencyWipeBtn.style.cssText = "position: fixed; top: 10px; left: 10px; padding: 8px 12px; border-radius: 8px; border: none; background: #ff4444; color: white; font-weight: bold; cursor: pointer; z-index: 1000;";
+    document.body.appendChild(enemyencyWipeBtn);
+    enemyencyWipeBtn.addEventListener("click", async () => {
+        await emergencyWipe();
+    });
+    async function emergencyWipe() {
+        if (!confirm("🚨 緊急事態！鍵データをすべて破棄し、ローカル情報も削除しますか？"))
+            return;
+        console.log("🛠️ 緊急ワイプを実行します...");
+        // 1. DBの鍵データをすべて空にする（UUIDだけ残す）
+        const { error } = await supabase
+            .from('profile_users')
+            .update({
+            ed25519_pub: null,
+            x25519_pub: null,
+            ed25519_private: null,
+            salt: null,
+            iv: null
+        })
+            .eq('uuid', storedUuid);
+        if (error) {
+            console.error("❌ DBのワイプに失敗しました:", error.message);
+            alert("DBの削除に失敗しました。ネットワークを確認してください。");
+            return;
+        }
+        // 2. ローカルストレージを完全に空にする
+        // これで PIN や UUID、トークンなどがすべて消えます
+        localStorage.clear();
+        sessionStorage.clear();
+        console.log("✅ 全データの破棄が完了しました。");
+        alert("すべての鍵とローカルデータを削除しました。");
+        // 3. 画面をリロードして初期状態（ログイン前）に戻す
+        location.reload();
+    }
     async function sendEncryptedMessage(text, aeskey) {
         if (!aeskey) {
             console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
@@ -134,14 +170,18 @@ async function main() {
         const data = encoder.encode(message);
         console.log("📝 署名中...");
         // 2. 署名実行（Ed25519）
-        const signature = await window.crypto.subtle.sign({ name: "Ed25519" }, privateKey, data);
+        const signature = await window.crypto.subtle.sign({
+            name: "Ed25519"
+        }, privateKey, data);
         // 署名結果は64バイトのバイナリ
         const sigHex = Array.from(new Uint8Array(signature))
             .map(b => b.toString(16).padStart(2, '0')).join('');
         console.log("✅ 署名完了（64バイトHex）:", sigHex);
         // 3. 検証実行
         console.log("🔍 検証中...");
-        const isValid = await window.crypto.subtle.verify({ name: "Ed25519" }, publicKey, signature, data);
+        const isValid = await window.crypto.subtle.verify({
+            name: "Ed25519"
+        }, publicKey, signature, data);
         if (isValid) {
             console.log("🚀 検証成功！このメッセージは正真正銘、マインさんの鍵で署名されています。");
         }
@@ -159,16 +199,17 @@ async function main() {
             .maybeSingle();
         if (error) {
             console.error("❌ 失敗:", error.message);
-            return;
+            return null;
         }
         console.log("🎯 取得できたデータ:", data);
         // 検証
-        if (data.email === undefined && data.ed25519_private === undefined) {
+        if (data && data.email === undefined && data.ed25519_private === undefined) {
             console.log("✅ 成功！メルアドと秘密鍵は物理的に遮断されています。");
         }
-        else {
+        else if (data) {
             console.warn("⚠️ 警告: 隠すべきデータが見えてしまっています！");
         }
+        return data;
     }
     async function restoreKey(pin) {
         // 1. DBからデータを取得
@@ -209,7 +250,10 @@ async function main() {
                 return; // 勝手に作らずに終了
             }
             console.log("✅ 正しく自分を更新できた。出発進行！");
-            return { privateKey, publicKey }; // ここで新規登録時は終了
+            return {
+                privateKey,
+                publicKey
+            }; // ここで新規登録時は終了
         }
         // --- 【復元ルート】DBにデータがある場合 ---
         console.log("DBから鍵を復元中...");
@@ -218,12 +262,20 @@ async function main() {
             const iv = await base64ToUint8Array(dbData.iv);
             const encryptedSeed = await base64ToUint8Array(dbData.ed25519_private);
             const aesKey = await deriveKeyFromPin(pin, salt);
-            const decryptedBuffer = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv.buffer }, aesKey, encryptedSeed.buffer);
+            const decryptedBuffer = await crypto.subtle.decrypt({
+                name: "AES-GCM",
+                iv: iv.buffer
+            }, aesKey, encryptedSeed.buffer);
             const seed = new Uint8Array(decryptedBuffer);
             const { privateKey, publicKey } = await generateEd25519KeyPair(seed);
             const { privateKey: xPriv, publicKey: xPub } = await generateX25519KeyPair(seed);
             console.log("✨ 復元成功！これで署名ができるようになったぞ。");
-            return { privateKey, publicKey, xPriv, xPub };
+            return {
+                privateKey,
+                publicKey,
+                xPriv,
+                xPub
+            };
         }
         catch (e) {
             console.error("❌ 復元失敗。PINコードが違うか、データが壊れています:", e);
@@ -239,10 +291,14 @@ async function main() {
     let pin;
     const salt = generateSalt();
     const base64salt = await arrayBufferToBase64(salt);
-    const mykey = await generateKeyPair();
-    const pubJwk = await crypto.subtle.exportKey("jwk", mykey.publicKey);
     // DB用のパスワードとなんか、　まぁええやろ
-    const supabase = createClient('https://cedpfdoanarzyxcroymc.supabase.co', 'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', { global: { headers: { Authorization: `Bearer ${storedToken}`, }, }, });
+    const supabase = createClient('https://cedpfdoanarzyxcroymc.supabase.co', 'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
+        global: {
+            headers: {
+                Authorization: `Bearer ${storedToken}`,
+            },
+        },
+    });
     if (storedToken === "") {
         window.location.href = "../index.html";
         return;
@@ -261,7 +317,12 @@ async function main() {
     });
     window.addEventListener("beforeunload", () => {
         if (wss && wss.readyState === WebSocket.OPEN) {
-            wss.send(JSON.stringify({ type: "leave", room: room, name: name, uuid: storedUuid }));
+            wss.send(JSON.stringify({
+                type: "leave",
+                room: room,
+                name: name,
+                uuid: storedUuid
+            }));
         }
     });
     btnroom.addEventListener("click", () => {
@@ -312,10 +373,20 @@ async function main() {
             else if (data.type === "DH" && data.name !== name) {
                 try {
                     // ★awaitを追加
-                    const remoteSalt = await base64ToUint8Array(data.salt);
-                    const saltall = combineSalts(salt, remoteSalt);
-                    const sharedSecret = await handleDHMessage(data, mykey.privateKey);
-                    aeskey = await deriveAesKeySafe(sharedSecret, new Uint8Array(saltall));
+                    const keys = await restoreKey(localStorage.getItem("pin") || "");
+                    // 1. まずViewから相手のプロフィールを取得
+                    const peerData = await testPublicKeyFetch(data.uuid);
+                    if (peerData && peerData.x25519_pub) {
+                        // 2. その中の「x25519_pub」という文字列だけをバイナリ（Uint8Array）に変換
+                        const peerRawPubKey = await base64ToUint8Array(peerData.x25519_pub);
+                        // 3. インポートして鍵オブジェクトにする（これがさっきの「儀式」）
+                        const theirPublicKey = await window.crypto.subtle.importKey("raw", peerRawPubKey, {
+                            name: "X25519"
+                        }, true, []);
+                        // 4. これでようやく「合体」！
+                        aeskey = await deriveSharedKey(keys.xPriv, theirPublicKey);
+                        console.log("✨ 共通鍵の合体に成功！");
+                    }
                     console.log("✨✨ AES鍵が完成しました！");
                     console.log("AES鍵 base64:", await arrayBufferToBase64(await crypto.subtle.exportKey("raw", aeskey)));
                 }
@@ -343,6 +414,7 @@ async function main() {
         };
     });
     if (localStorage.getItem("pin") === null) {
+        roomSelection.style.display = "none";
         pininput.addEventListener('input', () => {
             // 数字以外（^0-9）をすべて空文字に置換
             pininput.value = pininput.value.replace(/[^0-9]/g, '');
@@ -360,13 +432,14 @@ async function main() {
             testEd25519Signature(keys.privateKey, keys.publicKey);
             testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
             localStorage.setItem("pin", pininput.value);
+            roomSelection.style.display = "flex";
         });
     }
     else {
         pininput.style.display = "none";
         pinbtn.style.display = "none";
-        const keys = await restoreKey(pininput.value);
-        const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
+        const keys = await restoreKey(localStorage.getItem("pin") || "");
+        const keys2 = await restoreKey(localStorage.getItem("pin") || ""); // 再度復元して同じ鍵が出るか確認
         // 中身（Rawデータ）を取り出して比較する例
         const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
         const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
