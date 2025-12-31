@@ -46,6 +46,7 @@ async function main() {
     document.body.appendChild(chatContainer);
     // --- 1. 隠しインプット（画面には出さないが、appendChildは必要） ---
     // --- 1. 表示の床（メディアバブル） ---
+    // --- 1. 表示の床（音声・画像・ファイル対応） ---
     function addMediaBubble(url, label, isMe, subType) {
         const container = document.createElement("div");
         container.style.cssText = `
@@ -63,11 +64,24 @@ async function main() {
             img.onclick = () => window.open(url, '_blank');
             container.appendChild(img);
         }
+        else if (subType === "audio") {
+            // 音声プレーヤーを表示
+            const audio = document.createElement("audio");
+            audio.controls = true;
+            audio.src = url;
+            audio.style.cssText = "width: 100%; max-width: 250px; margin-top: 5px; outline: none;";
+            container.appendChild(audio);
+            // ラベル（UUID名）を表示
+            const nameLabel = document.createElement("span");
+            nameLabel.textContent = label;
+            nameLabel.style.cssText = "font-size: 10px; color: #888; padding-left: 5px;";
+            container.appendChild(nameLabel);
+        }
         else {
             const link = document.createElement("a");
             link.href = url;
-            link.download = label; // ここが UUID.拡張子 になる
-            link.textContent = `📁 ${label.substring(0, 20)}...`;
+            link.download = label; // 保存名は UUID.拡張子
+            link.textContent = `📁 ${label.substring(0, 25)}...`; // 表示もUUID
             link.style.cssText = `
             padding: 12px; background: ${isMe ? "#0084ff" : "#fff"};
             color: ${isMe ? "white" : "#0084ff"}; border-radius: 10px;
@@ -78,15 +92,19 @@ async function main() {
         chatBox.appendChild(container);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
-    // --- 2. ファイル選択・暗号化・送信司令塔 ---
+    // --- 2. ファイル送信の入り口 ---
     async function handleFileSelect(event, subType) {
         const target = event.target;
         const file = target.files?.[0];
         if (!file || !aesKeyhash)
             return;
-        // 名前を UUID + 拡張子 に作り変える
+        // 音声ファイルなら自動的に audio 型へ
+        let finalSubType = subType;
+        if (file.type.startsWith('audio/')) {
+            finalSubType = "audio";
+        }
         const extension = file.name.split('.').pop();
-        const uuidName = `${crypto.randomUUID()}.${extension}`;
+        const uuidName = `${crypto.randomUUID()}.${extension}`; // 保存・表示用のUUID名
         try {
             const arrayBuffer = await file.arrayBuffer();
             const plaintext = new Uint8Array(arrayBuffer);
@@ -97,10 +115,9 @@ async function main() {
             ]);
             const msg = {
                 type: "message",
-                subType: subType,
+                subType: finalSubType,
                 mimeType: file.type,
-                fileName: uuidName, // 保存名
-                originalName: file.name, // 表示用
+                fileName: uuidName,
                 room: room,
                 name: name,
                 uuid: storedUuid,
@@ -108,10 +125,10 @@ async function main() {
                 data: dataB64
             };
             wss.send(JSON.stringify(msg));
-            // 自分の画面にも出す
-            const url = URL.createObjectURL(file);
-            addMediaBubble(url, uuidName, true, subType);
-            // 入力値をリセットして同じファイルを連続で選べるようにする
+            // 自分の画面に出す
+            const blob = new Blob([plaintext], { type: file.type });
+            const url = URL.createObjectURL(blob);
+            addMediaBubble(url, uuidName, true, finalSubType);
             target.value = "";
         }
         catch (e) {
@@ -581,32 +598,27 @@ async function main() {
                 try {
                     if (!aesKeyhash)
                         return;
-                    // 1. 送られてきた IV と 暗号データをバイナリに戻す
                     const [iv, encryptedContent] = await Promise.all([
                         base64ToUint8Array(data.iv),
                         base64ToUint8Array(data.data)
                     ]);
-                    // 2. 復号する
                     const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer);
-                    // 3. 【ここが重要！】復号されたデータを「表示の床」に流す
-                    if (data.subType === "image" || data.subType === "file") {
-                        // 型エラーを防ぐために new Uint8Array で包む
+                    // ★ audio も含めて判定するように修正
+                    if (data.subType === "image" || data.subType === "file" || data.subType === "audio") {
                         const blob = new Blob([new Uint8Array(decryptedArray)], {
                             type: data.mimeType || "application/octet-stream"
                         });
-                        // ブラウザで表示可能なURLを生成
                         const url = URL.createObjectURL(blob);
-                        // 以前作った表示の床（addMediaBubble）を呼ぶ
+                        // data.fileName(UUID) を渡す
                         addMediaBubble(url, data.fileName, false, data.subType);
                     }
                     else {
-                        // 普通のテキストメッセージの場合
                         const messageText = new TextDecoder().decode(decryptedArray);
                         addBubble(messageText, false);
                     }
                 }
                 catch (e) {
-                    console.error("復号に失敗しました。鍵が合っていない可能性があります:", e);
+                    console.error("復号失敗:", e);
                 }
             }
         };
