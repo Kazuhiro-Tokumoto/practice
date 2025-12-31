@@ -40,6 +40,13 @@ export async function encrypt(
     };
 }
 
+export async function aesKeyToArray(aesKey: CryptoKey): Promise<Uint8Array> {
+  // AES-GCM 鍵も "raw" 形式で 32バイト（256bit）として取り出せます
+  const exported = await window.crypto.subtle.exportKey("raw", aesKey);
+  
+  return new Uint8Array(exported);
+}
+
 export async function decrypt(
     key: CryptoKey,
     iv: Uint8Array,

@@ -2,13 +2,14 @@ import { generateEd25519KeyPair, generateX25519KeyPair } from "./mojyu-ru/crypto
 import { arrayBufferToBase64, base64ToUint8Array } from "./mojyu-ru/base64.js"; // 16進数変換のみ残す
 import { generateSalt, generateMasterSeed } from "./mojyu-ru/crypto/saltaes.js";
 import { dhs } from "./mojyu-ru/joins.js";
-import { decrypt, encrypt, deriveKeyFromPin, deriveSharedKey } from "./mojyu-ru/crypto/aes.js";
+import { deriveAesKeySafe } from "./mojyu-ru/crypto/kdf.js";
+import { decrypt, encrypt, deriveKeyFromPin, deriveSharedKey, aesKeyToArray } from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
 import { createClient
 // @ts-ignore
  } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-// 1. Supabaseの接続設定
+import { sha256, sha512, combine } from "./mojyu-ru/crypto/hash.js";
 // 32バイトのシード（本来はPINから生成）
 async function main() {
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
@@ -338,6 +339,8 @@ async function main() {
     let pin;
     const salt = generateSalt();
     const base64salt = await arrayBufferToBase64(salt);
+    let keys;
+    let rand = crypto.getRandomValues(new Uint8Array(32));
     // DB用のパスワードとなんか、　まぁええやろ
     const supabase = createClient('https://cedpfdoanarzyxcroymc.supabase.co', 'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
         global: {
@@ -411,7 +414,7 @@ async function main() {
             if (data.type === "dh-start" || data.type === "join-broadcast") {
                 if (data.name === name)
                     return;
-                const dhmsg = dhs(event, name, room, storedUuid);
+                const dhmsg = dhs(event, name, room, storedUuid, rand);
                 if (dhmsg) {
                     wss.send(JSON.stringify(dhmsg));
                     console.log("自分のDHを送信完了");
@@ -436,6 +439,9 @@ async function main() {
                     }
                     console.log("✨✨ AES鍵が完成しました！");
                     console.log("AES鍵 base64:", await arrayBufferToBase64(await crypto.subtle.exportKey("raw", aeskey)));
+                    const aes = await aesKeyToArray(aeskey);
+                    console.log("AES鍵 Uint8Array:", aes);
+                    aeskey = await deriveAesKeySafe(await sha256(await sha512(combine(await sha512(combine(rand, data.rand)), await sha512(aes)))));
                 }
                 catch (e) {
                     console.error("鍵交換エラー:", e);
@@ -470,7 +476,7 @@ async function main() {
         pinbtn.addEventListener("click", async () => {
             pinContainer.style.display = "none";
             enemyencyWipeBtn.style.display = "flex";
-            const keys = await restoreKey(pininput.value);
+            keys = await restoreKey(pininput.value);
             const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
             // 中身（Rawデータ）を取り出して比較する例
             const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);

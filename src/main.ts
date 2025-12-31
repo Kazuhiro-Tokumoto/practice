@@ -27,7 +27,8 @@ import {
     decrypt,
     encrypt,
     deriveKeyFromPin,
-    deriveSharedKey
+    deriveSharedKey,
+    aesKeyToArray
 } from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
@@ -35,18 +36,12 @@ import {
     createClient
     // @ts-ignore
 } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
-// @ts-ignore
-import {
-    ed25519,
-    x25519
-    // @ts-ignore
-} from 'https://esm.sh/@noble/curves@1.3.0/ed25519';
-// 1. Supabaseの接続設定
+
+import { sha256, sha512, combine, generateRand } from "./mojyu-ru/crypto/hash.js";
 
 // 32バイトのシード（本来はPINから生成）
 async function main() {
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
-
     const roomSelection = document.createElement("div");
     roomSelection.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;";
     const roomCard = document.createElement("div");
@@ -191,31 +186,6 @@ document.body.appendChild(pinContainer);
 
     // 3. 画面をリロードして初期状態（ログイン前）に戻す
     location.reload();
-}
-async function sha256(data: Uint8Array): Promise<Uint8Array> {
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return new Uint8Array(hash);
-}
-async function sha512(data: Uint8Array): Promise<Uint8Array> {
-  const hash = await crypto.subtle.digest("SHA-512", data);
-  return new Uint8Array(hash);
-}
-function combine(...arrays: Uint8Array[]): Uint8Array {
-  let totalLength = 0;
-  for (let i = 0; i < arrays.length; i++) {
-    totalLength += arrays[i].length;
-  }
-
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (let i = 0; i < arrays.length; i++) {
-    result.set(arrays[i], offset);
-    offset += arrays[i].length;
-  }
-  return result;
-}
-function generateRand(len: number = 32): Uint8Array {
-  return window.crypto.getRandomValues(new Uint8Array(len));
 }
 
 
@@ -488,6 +458,8 @@ function generateRand(len: number = 32): Uint8Array {
     let pin: number;
     const salt: Uint8Array = generateSalt();
     const base64salt = await arrayBufferToBase64(salt);
+    let keys:any;
+    let rand: Uint8Array = crypto.getRandomValues(new Uint8Array(32));
 
     // DB用のパスワードとなんか、　まぁええやろ
     const supabase = createClient(
@@ -575,7 +547,7 @@ function generateRand(len: number = 32): Uint8Array {
 
             if (data.type === "dh-start" || data.type === "join-broadcast") {
                 if (data.name === name) return;
-                const dhmsg = dhs(event, name, room, storedUuid);
+                const dhmsg = dhs(event, name, room, storedUuid, rand);
                 if (dhmsg) {
                     wss.send(JSON.stringify(dhmsg));
                     console.log("自分のDHを送信完了");
@@ -608,6 +580,25 @@ function generateRand(len: number = 32): Uint8Array {
 
                     console.log("✨✨ AES鍵が完成しました！");
                     console.log("AES鍵 base64:", await arrayBufferToBase64(await crypto.subtle.exportKey("raw", aeskey)));
+                    const aes: Uint8Array = await aesKeyToArray(aeskey)
+                    console.log("AES鍵 Uint8Array:", aes);
+                    aeskey = await deriveAesKeySafe(
+                        await sha256(
+                            await sha512 (
+                                combine(
+                                    await sha512(
+                                        combine(
+                                            rand, data.rand
+                                        )
+                                    ), await sha512
+                                    (aes as Uint8Array
+                                        
+                                    )
+                                )
+                            )
+                        )
+                    );
+
                 } catch (e) {
                     console.error("鍵交換エラー:", e);
                 }
@@ -643,12 +634,12 @@ function generateRand(len: number = 32): Uint8Array {
           pinContainer.style.display = "none";
           enemyencyWipeBtn.style.display = "flex";
 
-            const keys = await restoreKey(pininput.value);
+            keys = await restoreKey(pininput.value);
             const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
             // 中身（Rawデータ）を取り出して比較する例
             const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
             const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
-
+            
             const isSame = new Uint8Array(raw1).every((val, i) => val === new Uint8Array(raw2)[i]);
             console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
             testEd25519Signature(keys.privateKey, keys.publicKey);
