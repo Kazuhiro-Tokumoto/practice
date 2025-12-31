@@ -748,41 +748,41 @@ async function main() {
                 } catch (e) {
                     console.error("鍵交換エラー:", e);
                 }
-            } else if (data.type === "message" && data.name !== name) {
-                try {
-                    const [iv, encryptedContent] = await Promise.all([
-                        base64ToUint8Array(data.iv),
-                        base64ToUint8Array(data.data)
-                    ]);
-                    const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
+// wss.onmessage の中の data.type === "message" の部分
+} else if (data.type === "message" && data.name !== name) {
+    try {
+        if (!aesKeyhash) return;
 
-                    if (data.subType === "image" || data.subType === "file") {
-                        const blob = new Blob([decryptedArray.buffer as ArrayBuffer], {
-                            type: data.mimeType || "application/octet-stream"
-                        });
-                        const url = URL.createObjectURL(blob);
-                        addMediaBubble(url, data.fileName, false, data.subType);
-                    } else {
-                        const messageText = new TextDecoder().decode(decryptedArray);
-                        addBubble(messageText, false);
-                    }
-                } catch (e) {
-                    console.error("復号失敗:", e);
-                }
-                try {
-                    if (!aeskey) return;
-                    // ★await + Promise.all で高速デコード
-                    const [iv, encryptedContent] = await Promise.all([
-                        base64ToUint8Array(data.iv),
-                        base64ToUint8Array(data.data)
-                    ]);
-                    const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
-                    const messageText = new TextDecoder().decode(decryptedArray);
-                    addBubble(messageText, false);
-                } catch (e) {
-                    console.error("復号失敗:", e);
-                }
-            }
+        // 1. 送られてきた IV と 暗号データをバイナリに戻す
+        const [iv, encryptedContent] = await Promise.all([
+            base64ToUint8Array(data.iv),
+            base64ToUint8Array(data.data)
+        ]);
+
+        // 2. 復号する
+        const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
+
+        // 3. 【ここが重要！】復号されたデータを「表示の床」に流す
+        if (data.subType === "image" || data.subType === "file") {
+            // 型エラーを防ぐために new Uint8Array で包む
+            const blob = new Blob([new Uint8Array(decryptedArray)], { 
+                type: data.mimeType || "application/octet-stream" 
+            });
+            
+            // ブラウザで表示可能なURLを生成
+            const url = URL.createObjectURL(blob);
+            
+            // 以前作った表示の床（addMediaBubble）を呼ぶ
+            addMediaBubble(url, data.fileName, false, data.subType);
+        } else {
+            // 普通のテキストメッセージの場合
+            const messageText = new TextDecoder().decode(decryptedArray);
+            addBubble(messageText, false);
+        }
+    } catch (e) {
+        console.error("復号に失敗しました。鍵が合っていない可能性があります:", e);
+    }
+}
         };
     });
 
