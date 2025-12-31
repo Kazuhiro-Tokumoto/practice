@@ -136,9 +136,18 @@ function addMediaBubble(url: string, uuidName: string, originalName: string, isM
 
 // --- 2. 送信司令塔（originalNameを送信に含める） ---
 async function handleFileSelect(event: Event, subType: "image" | "file" | "audio") {
-    const target = event.target as HTMLInputElement;
+const target = event.target as HTMLInputElement;
     const file = target.files?.[0];
     if (!file || !aesKeyhash) return;
+
+    // ★ 物理班の安全装置（10MB制限）
+    const MAX_SIZE = 10 * 1024 * 1024; 
+    if (file.size > MAX_SIZE) {
+        addSystemMsg(`⚠️ サイズ超過: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+        addSystemMsg("分割機能がないため、10MB以下のファイルにしてください。");
+        target.value = "";
+        return;
+    }
 
     let finalSubType = subType;
     if (file.type.startsWith('audio/')) finalSubType = "audio";
