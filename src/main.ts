@@ -88,50 +88,52 @@ function addMediaBubble(url: string, uuidName: string, originalName: string, isM
     container.style.cssText = `
         max-width: 70%; 
         margin: 10px 0;
+        padding: 8px;
         align-self: ${isMe ? "flex-end" : "flex-start"};
         display: flex;
         flex-direction: column;
-        gap: 5px;
+        gap: 8px;
+        background: ${isMe ? "#0084ff" : "#e4e6eb"};
+        border-radius: 15px;
+        ${isMe ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"}
     `;
 
-    // 表示に使う名前（元の名前がなければUUIDを表示）
     const displayName = originalName || uuidName;
 
     if (subType === "image") {
         const img = document.createElement("img");
         img.src = url;
-        img.style.cssText = "width: 100%; max-width: 250px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer;";
+        img.style.cssText = "width: 100%; max-width: 250px; border-radius: 10px; cursor: pointer; display: block;";
         img.onclick = () => window.open(url, '_blank');
         container.appendChild(img);
-        
-        // 画像の下に元のファイル名を表示
-        const nameLabel = document.createElement("span");
-        nameLabel.textContent = displayName;
-        nameLabel.style.cssText = "font-size: 10px; color: #888; text-align: right;";
-        container.appendChild(nameLabel);
     } else if (subType === "audio") {
+        // --- 音声プレーヤーの構築 ---
         const audio = document.createElement("audio");
-        audio.controls = true;
         audio.src = url;
-        audio.style.cssText = "width: 100%; max-width: 250px; outline: none;";
+        audio.controls = true; // これを確実にセット
+        audio.style.cssText = "width: 100%; min-width: 200px; max-width: 250px; height: 40px;";
+        // audioタグは append してからロードさせると確実
         container.appendChild(audio);
-        
-        const nameLabel = document.createElement("span");
-        nameLabel.textContent = displayName;
-        nameLabel.style.cssText = "font-size: 10px; color: #888; padding-left: 5px;";
-        container.appendChild(nameLabel);
     } else {
         const link = document.createElement("a");
         link.href = url;
-        link.download = uuidName; // 保存される時は UUID
-        link.textContent = `📁 ${displayName}`; // 表示は 送信時の名前
+        link.download = uuidName;
+        link.textContent = `📁 ${displayName}`;
         link.style.cssText = `
-            padding: 12px; background: ${isMe ? "#0084ff" : "#fff"};
-            color: ${isMe ? "white" : "#0084ff"}; border-radius: 10px;
-            border: 1px solid #0084ff; text-decoration: none; font-weight: bold; text-align: center;
+            padding: 10px; background: rgba(255,255,255,0.2);
+            color: ${isMe ? "white" : "#0084ff"}; border-radius: 8px;
+            text-decoration: none; font-weight: bold; text-align: center;
+            border: 1px solid rgba(0,0,0,0.1);
         `;
         container.appendChild(link);
     }
+
+    // ファイル名ラベル（共通）
+    const nameLabel = document.createElement("span");
+    nameLabel.textContent = displayName;
+    nameLabel.style.cssText = `font-size: 10px; color: ${isMe ? "rgba(255,255,255,0.8)" : "#888"}; margin-top: 2px;`;
+    container.appendChild(nameLabel);
+
     chatBox.appendChild(container);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -778,23 +780,27 @@ async function handleFileSelect(event: Event, subType: "image" | "file" | "audio
             base64ToUint8Array(data.iv),
             base64ToUint8Array(data.data)
         ]);
-        const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
+
+        // 復号
+        const decryptedBuffer = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
+        
+        // ★ 対策：復号直後のデータを確実に新しい Uint8Array にコピーする
+        const cleanData = new Uint8Array(decryptedBuffer);
 
         if (data.subType === "image" || data.subType === "file" || data.subType === "audio") {
-            // ★ ここで Uint8Array に変換して Blob 化する（画像が表示されない対策）
-            const blob = new Blob([new Uint8Array(decryptedArray)], { 
-                type: data.mimeType || "application/octet-stream" 
-            });
+            // mimeTypeを優先しつつ、なければ推測
+            const mime = data.mimeType || (data.subType === "image" ? "image/png" : "application/octet-stream");
+            
+            const blob = new Blob([cleanData], { type: mime });
             const url = URL.createObjectURL(blob);
             
-            // 引数に data.originalName も追加
             addMediaBubble(url, data.fileName, data.originalName, false, data.subType);
         } else {
-            const messageText = new TextDecoder().decode(decryptedArray);
+            const messageText = new TextDecoder().decode(cleanData);
             addBubble(messageText, false);
         }
     } catch (e) {
-        console.error("復号失敗:", e);
+        console.error("復号・表示エラー:", e);
     }
 }
         };
