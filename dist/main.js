@@ -349,19 +349,20 @@ async function main() {
             },
         },
     });
+    let aesKeyhash;
     if (storedToken === "") {
         window.location.href = "../index.html";
         return;
     }
     sendBtn.addEventListener("click", async () => {
         if (input.value) {
-            await sendEncryptedMessage(input.value, aeskey);
+            await sendEncryptedMessage(input.value, aesKeyhash);
             input.value = "";
         }
     });
     input.addEventListener("keypress", async (e) => {
         if (e.key === "Enter" && input.value) {
-            await sendEncryptedMessage(input.value, aeskey);
+            await sendEncryptedMessage(input.value, aesKeyhash);
             input.value = "";
         }
     });
@@ -441,7 +442,8 @@ async function main() {
                     console.log("AES鍵 base64:", await arrayBufferToBase64(await crypto.subtle.exportKey("raw", aeskey)));
                     const aes = await aesKeyToArray(aeskey);
                     console.log("AES鍵 Uint8Array:", aes);
-                    aeskey = await deriveAesKeySafe(await sha256(await sha512(combine(await sha512(combine(rand, data.rand)), await sha512(aes)))));
+                    const peerRand = new Uint8Array(Object.values(data.rand));
+                    aesKeyhash = await deriveAesKeySafe(await sha256(await sha512(combine(await sha512(combine(rand, peerRand)), await sha512(aes)))));
                 }
                 catch (e) {
                     console.error("鍵交換エラー:", e);

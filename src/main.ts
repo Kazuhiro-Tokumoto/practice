@@ -11,7 +11,6 @@ import {
 } from "./mojyu-ru/base64.js"; // 16進数変換のみ残す
 import {
     generateSalt,
-    combineSalts,
     generateMasterSeed
 } from "./mojyu-ru/crypto/saltaes.js";
 import {
@@ -472,7 +471,7 @@ document.body.appendChild(pinContainer);
             },
         }
     );
-
+    let aesKeyhash: CryptoKey;
 
 
     if (storedToken === "") {
@@ -482,13 +481,13 @@ document.body.appendChild(pinContainer);
 
     sendBtn.addEventListener("click", async () => {
         if (input.value) {
-            await sendEncryptedMessage(input.value, aeskey);
+            await sendEncryptedMessage(input.value, aesKeyhash);
             input.value = "";
         }
     });
     input.addEventListener("keypress", async (e) => {
         if (e.key === "Enter" && input.value) {
-            await sendEncryptedMessage(input.value, aeskey);
+            await sendEncryptedMessage(input.value, aesKeyhash);
             input.value = "";
         }
     });
@@ -582,17 +581,18 @@ document.body.appendChild(pinContainer);
                     console.log("AES鍵 base64:", await arrayBufferToBase64(await crypto.subtle.exportKey("raw", aeskey)));
                     const aes: Uint8Array = await aesKeyToArray(aeskey)
                     console.log("AES鍵 Uint8Array:", aes);
-                    aeskey = await deriveAesKeySafe(
+                    const peerRand = new Uint8Array(Object.values(data.rand));
+                    aesKeyhash = await deriveAesKeySafe(
                         await sha256(
                             await sha512 (
                                 combine(
                                     await sha512(
                                         combine(
-                                            rand, data.rand
+                                            rand, peerRand
                                         )
                                     ), await sha512
                                     (aes as Uint8Array
-                                        
+
                                     )
                                 )
                             )
