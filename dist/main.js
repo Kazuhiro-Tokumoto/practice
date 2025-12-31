@@ -83,7 +83,7 @@ async function main() {
             const link = document.createElement("a");
             link.href = url;
             link.download = uuidName;
-            link.textContent = `📁 ${displayName}`;
+            link.textContent = `${displayName}`;
             link.style.cssText = `
             padding: 10px; background: rgba(255,255,255,0.2);
             color: ${isMe ? "white" : "#0084ff"}; border-radius: 8px;
