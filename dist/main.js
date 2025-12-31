@@ -443,6 +443,18 @@ async function main() {
                     const aes = await aesKeyToArray(aeskey);
                     console.log("AES鍵 Uint8Array:", aes);
                     const peerRand = new Uint8Array(Object.values(data.rand));
+                    const myUuid = storedUuid;
+                    const peerUuid = data.uuid;
+                    // UUIDを比較して、順番を常に一定にする（アルファベット順など）
+                    let firstRand, secondRand;
+                    if (myUuid < peerUuid) {
+                        firstRand = rand; // 自分が先
+                        secondRand = peerRand; // 相手が後
+                    }
+                    else {
+                        firstRand = peerRand; // 相手が先
+                        secondRand = rand; // 自分が後
+                    }
                     aesKeyhash = await deriveAesKeySafe(await sha256(await sha512(combine(await sha512(combine(rand, peerRand)), await sha512(aes)))));
                 }
                 catch (e) {
@@ -503,7 +515,6 @@ async function main() {
         console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
         testEd25519Signature(keys.privateKey, keys.publicKey);
         testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
-        localStorage.setItem("pin", pininput.value);
     }
 }
 // 先ほどのログで出ていた CryptoKey を使って実行

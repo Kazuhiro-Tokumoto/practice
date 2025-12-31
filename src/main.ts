@@ -36,7 +36,12 @@ import {
     // @ts-ignore
 } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
-import { sha256, sha512, combine, generateRand } from "./mojyu-ru/crypto/hash.js";
+import {
+    sha256,
+    sha512,
+    combine,
+    generateRand
+} from "./mojyu-ru/crypto/hash.js";
 
 // 32バイトのシード（本来はPINから生成）
 async function main() {
@@ -76,9 +81,9 @@ async function main() {
     // 実験
     // 入力欄 (真ん中)
 
-// 1. 中央配置用のコンテナを作る
-const pinContainer = document.createElement("div");
-pinContainer.style.cssText = `
+    // 1. 中央配置用のコンテナを作る
+    const pinContainer = document.createElement("div");
+    pinContainer.style.cssText = `
     position: fixed;
     top: 50%;
     left: 50%;
@@ -96,12 +101,12 @@ pinContainer.style.cssText = `
     max-width: 300px;
 `;
 
-// 2. PIN入力欄（大きくする）
-const pininput = document.createElement("input");
-pininput.type = "password";
-pininput.placeholder = "PIN(数字)";
-pininput.inputMode = "numeric"; // スマホで数字キーボードを出す
-pininput.style.cssText = `
+    // 2. PIN入力欄（大きくする）
+    const pininput = document.createElement("input");
+    pininput.type = "password";
+    pininput.placeholder = "PIN(数字)";
+    pininput.inputMode = "numeric"; // スマホで数字キーボードを出す
+    pininput.style.cssText = `
     width: 100%;
     padding: 12px;
     font-size: 18px;
@@ -111,10 +116,10 @@ pininput.style.cssText = `
     outline: none;
 `;
 
-// 3. 鍵復元ボタン（大きく、かっこよく）
-const pinbtn = document.createElement("button");
-pinbtn.textContent = "鍵を復元してチャット開始";
-pinbtn.style.cssText = `
+    // 3. 鍵復元ボタン（大きく、かっこよく）
+    const pinbtn = document.createElement("button");
+    pinbtn.textContent = "鍵を復元してチャット開始";
+    pinbtn.style.cssText = `
     width: 100%;
     padding: 15px;
     font-size: 16px;
@@ -127,17 +132,17 @@ pinbtn.style.cssText = `
     box-shadow: 0 4px 10px rgba(0,132,255,0.3);
 `;
 
-// 4. 緊急削除ボタン（ついでに下に小さく配置）
-const wipeLink = document.createElement("span");
-wipeLink.textContent = "データをすべて破棄";
-wipeLink.style.cssText = "color: #ff4d4d; cursor: pointer; font-size: 12px; text-decoration: underline; margin-top: 10px;";
-wipeLink.onclick = emergencyWipe; // さっきの関数を紐付け
+    // 4. 緊急削除ボタン（ついでに下に小さく配置）
+    const wipeLink = document.createElement("span");
+    wipeLink.textContent = "データをすべて破棄";
+    wipeLink.style.cssText = "color: #ff4d4d; cursor: pointer; font-size: 12px; text-decoration: underline; margin-top: 10px;";
+    wipeLink.onclick = emergencyWipe; // さっきの関数を紐付け
 
-// まとめて画面に追加
-pinContainer.appendChild(pininput);
-pinContainer.appendChild(pinbtn);
-pinContainer.appendChild(wipeLink);
-document.body.appendChild(pinContainer);
+    // まとめて画面に追加
+    pinContainer.appendChild(pininput);
+    pinContainer.appendChild(pinbtn);
+    pinContainer.appendChild(wipeLink);
+    document.body.appendChild(pinContainer);
 
 
     const enemyencyWipeBtn = document.createElement("button");
@@ -148,44 +153,46 @@ document.body.appendChild(pinContainer);
     enemyencyWipeBtn.addEventListener("click", async () => {
         await emergencyWipe();
     });
-// 鍵が復元されたらこのコンテナを消す処理を restoreKey の成功時に入れてね
-// pinContainer.style.display = "none";
+    // 鍵が復元されたらこのコンテナを消す処理を restoreKey の成功時に入れてね
+    // pinContainer.style.display = "none";
 
 
-  async function emergencyWipe() {
-    if (!confirm("鍵データをすべて破棄し、ローカル情報も削除しますか？")) return;
+    async function emergencyWipe() {
+        if (!confirm("鍵データをすべて破棄し、ローカル情報も削除しますか？")) return;
 
-    console.log("🛠️ 緊急ワイプを実行します...");
+        console.log("🛠️ 緊急ワイプを実行します...");
 
-    // 1. DBの鍵データをすべて空にする（UUIDだけ残す）
-    const { error } = await supabase
-        .from('profile_users')
-        .update({
-            ed25519_pub: null,
-            x25519_pub: null,
-            ed25519_private: null,
-            salt: null,
-            iv: null
-        })
-        .eq('uuid', storedUuid);
+        // 1. DBの鍵データをすべて空にする（UUIDだけ残す）
+        const {
+            error
+        } = await supabase
+            .from('profile_users')
+            .update({
+                ed25519_pub: null,
+                x25519_pub: null,
+                ed25519_private: null,
+                salt: null,
+                iv: null
+            })
+            .eq('uuid', storedUuid);
 
-    if (error) {
-        console.error("❌ DBのワイプに失敗しました:", error.message);
-        alert("DBの削除に失敗しました。ネットワークを確認してください。");
-        return;
+        if (error) {
+            console.error("❌ DBのワイプに失敗しました:", error.message);
+            alert("DBの削除に失敗しました。ネットワークを確認してください。");
+            return;
+        }
+
+        // 2. ローカルストレージを完全に空にする
+        // これで PIN や UUID、トークンなどがすべて消えます
+        localStorage.clear();
+        sessionStorage.clear();
+
+        console.log("✅ 全データの破棄が完了しました。");
+        alert("すべての鍵とローカルデータを削除しました。");
+
+        // 3. 画面をリロードして初期状態（ログイン前）に戻す
+        location.reload();
     }
-
-    // 2. ローカルストレージを完全に空にする
-    // これで PIN や UUID、トークンなどがすべて消えます
-    localStorage.clear();
-    sessionStorage.clear();
-
-    console.log("✅ 全データの破棄が完了しました。");
-    alert("すべての鍵とローカルデータを削除しました。");
-
-    // 3. 画面をリロードして初期状態（ログイン前）に戻す
-    location.reload();
-}
 
 
 
@@ -457,7 +464,7 @@ document.body.appendChild(pinContainer);
     let pin: number;
     const salt: Uint8Array = generateSalt();
     const base64salt = await arrayBufferToBase64(salt);
-    let keys:any;
+    let keys: any;
     let rand: Uint8Array = crypto.getRandomValues(new Uint8Array(32));
 
     // DB用のパスワードとなんか、　まぁええやろ
@@ -582,16 +589,27 @@ document.body.appendChild(pinContainer);
                     const aes: Uint8Array = await aesKeyToArray(aeskey)
                     console.log("AES鍵 Uint8Array:", aes);
                     const peerRand = new Uint8Array(Object.values(data.rand));
+                    const myUuid = storedUuid;
+                    const peerUuid = data.uuid;
+
+                    // UUIDを比較して、順番を常に一定にする（アルファベット順など）
+                    let firstRand, secondRand;
+                    if (myUuid < peerUuid) {
+                        firstRand = rand; // 自分が先
+                        secondRand = peerRand; // 相手が後
+                    } else {
+                        firstRand = peerRand; // 相手が先
+                        secondRand = rand; // 自分が後
+                    }
                     aesKeyhash = await deriveAesKeySafe(
                         await sha256(
-                            await sha512 (
+                            await sha512(
                                 combine(
                                     await sha512(
                                         combine(
                                             rand, peerRand
                                         )
-                                    ), await sha512
-                                    (aes as Uint8Array
+                                    ), await sha512(aes as Uint8Array
 
                                     )
                                 )
@@ -620,10 +638,10 @@ document.body.appendChild(pinContainer);
         };
     });
 
-    
+
 
     if (localStorage.getItem("pin") === null) {
-      enemyencyWipeBtn.style.display = "none";
+        enemyencyWipeBtn.style.display = "none";
         roomSelection.style.display = "none";
         pininput.addEventListener('input', () => {
             // 数字以外（^0-9）をすべて空文字に置換
@@ -631,15 +649,15 @@ document.body.appendChild(pinContainer);
         });
 
         pinbtn.addEventListener("click", async () => {
-          pinContainer.style.display = "none";
-          enemyencyWipeBtn.style.display = "flex";
+            pinContainer.style.display = "none";
+            enemyencyWipeBtn.style.display = "flex";
 
             keys = await restoreKey(pininput.value);
             const keys2 = await restoreKey(pininput.value); // 再度復元して同じ鍵が出るか確認
             // 中身（Rawデータ）を取り出して比較する例
             const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
             const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
-            
+
             const isSame = new Uint8Array(raw1).every((val, i) => val === new Uint8Array(raw2)[i]);
             console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
             testEd25519Signature(keys.privateKey, keys.publicKey);
@@ -650,7 +668,7 @@ document.body.appendChild(pinContainer);
 
     } else {
         pinContainer.style.display = "none";
-      enemyencyWipeBtn.style.display = "flex";
+        enemyencyWipeBtn.style.display = "flex";
         const keys = await restoreKey(localStorage.getItem("pin") || "");
         const keys2 = await restoreKey(localStorage.getItem("pin") || ""); // 再度復元して同じ鍵が出るか確認
         // 中身（Rawデータ）を取り出して比較する例
@@ -661,7 +679,6 @@ document.body.appendChild(pinContainer);
         console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
         testEd25519Signature(keys.privateKey, keys.publicKey);
         testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
-        localStorage.setItem("pin", pininput.value);
 
     }
 
