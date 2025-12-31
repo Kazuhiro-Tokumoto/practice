@@ -145,23 +145,13 @@ async function main() {
     fileInput.type = "file";
     fileInput.style.display = "none";
     document.body.appendChild(fileInput);
-    const photoInput = document.createElement("input");
-    photoInput.type = "file";
-    photoInput.accept = "image/*";
-    photoInput.style.display = "none";
-    document.body.appendChild(photoInput);
-    const photoBtn = document.createElement("button");
-    photoBtn.textContent = "📷";
-    photoBtn.style.cssText = "background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px;";
-    photoBtn.onclick = () => photoInput.click();
     const fileBtn = document.createElement("button");
-    fileBtn.textContent = "📎";
+    fileBtn.textContent = "＋";
     fileBtn.style.cssText = "background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px;";
     fileBtn.onclick = () => fileInput.click();
-    inputContainer.prepend(photoBtn, fileBtn);
+    inputContainer.prepend(fileBtn);
     fileInput.onchange = (e) => handleFileSelect(e, "file");
-    photoInput.onchange = (e) => handleFileSelect(e, "image");
-    // --- 4. 受信処理の書き換え (wss.onmessage 内の message 部分) ---
+    // --- 4. 受信処理の書き換え (ws＋---
     // ※ data.type === "message" の分岐の中にこれを入れてください
     /*
     try {
@@ -609,22 +599,24 @@ async function main() {
                     ]);
                     // 復号
                     const decryptedBuffer = await decrypt(aesKeyhash, iv, encryptedContent.buffer);
-                    // ★ 対策：復号直後のデータを確実に新しい Uint8Array にコピーする
+                    // ★ここを強化！ 復号された生のバッファを新しい Uint8Array に入れて「純粋なバイナリ」にする
                     const cleanData = new Uint8Array(decryptedBuffer);
                     if (data.subType === "image" || data.subType === "file" || data.subType === "audio") {
-                        // mimeTypeを優先しつつ、なければ推測
+                        // PNGが表示されない対策：型とデータを確定させる
                         const mime = data.mimeType || (data.subType === "image" ? "image/png" : "application/octet-stream");
                         const blob = new Blob([cleanData], { type: mime });
                         const url = URL.createObjectURL(blob);
+                        // 表示の床へ（uuidName, originalName の順番に注意！）
                         addMediaBubble(url, data.fileName, data.originalName, false, data.subType);
                     }
                     else {
+                        // テキストメッセージ
                         const messageText = new TextDecoder().decode(cleanData);
                         addBubble(messageText, false);
                     }
                 }
                 catch (e) {
-                    console.error("復号・表示エラー:", e);
+                    console.error("復号・表示に失敗:", e);
                 }
             }
         };
