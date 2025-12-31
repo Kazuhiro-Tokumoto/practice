@@ -455,7 +455,7 @@ async function main() {
                         firstRand = peerRand; // 相手が先
                         secondRand = rand; // 自分が後
                     }
-                    aesKeyhash = await deriveAesKeySafe(await sha256(await sha512(combine(await sha512(combine(rand, peerRand)), await sha512(aes)))));
+                    aesKeyhash = await deriveAesKeySafe(await sha256(await sha512(combine(await sha512(combine(firstRand, secondRand)), await sha512(aes)))));
                 }
                 catch (e) {
                     console.error("鍵交換エラー:", e);

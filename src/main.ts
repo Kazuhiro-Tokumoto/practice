@@ -607,7 +607,7 @@ async function main() {
                                 combine(
                                     await sha512(
                                         combine(
-                                            rand, peerRand
+                                            firstRand, secondRand
                                         )
                                     ), await sha512(aes as Uint8Array
 
