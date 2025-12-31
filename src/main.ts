@@ -610,7 +610,7 @@ document.body.appendChild(pinContainer);
                         base64ToUint8Array(data.iv),
                         base64ToUint8Array(data.data)
                     ]);
-                    const decryptedArray = await decrypt(aeskey, iv, encryptedContent.buffer as ArrayBuffer);
+                    const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
                     const messageText = new TextDecoder().decode(decryptedArray);
                     addBubble(messageText, false);
                 } catch (e) {

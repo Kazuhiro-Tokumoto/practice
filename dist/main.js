@@ -458,7 +458,7 @@ async function main() {
                         base64ToUint8Array(data.iv),
                         base64ToUint8Array(data.data)
                     ]);
-                    const decryptedArray = await decrypt(aeskey, iv, encryptedContent.buffer);
+                    const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer);
                     const messageText = new TextDecoder().decode(decryptedArray);
                     addBubble(messageText, false);
                 }
