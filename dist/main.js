@@ -594,23 +594,30 @@ async function main() {
                         base64ToUint8Array(data.data)
                     ]);
                     const decryptedBuffer = await decrypt(aesKeyhash, iv, encryptedContent.buffer);
+                    // ★修正1：データを確実にコピーしてバイナリとして安定させる
                     const cleanData = new Uint8Array(decryptedBuffer);
                     if (data.subType === "image" || data.subType === "file" || data.subType === "audio") {
-                        // ★超重要：送信側から届いた mimeType をそのまま使う
-                        // もし空なら、subType から推測するが、基本は送信側が送る mimeType を信じる
+                        // ★修正2：MIMEタイプを動的に判定
+                        // 届いた data.mimeType を優先し、なければ拡張子から推測
                         let mime = data.mimeType;
                         if (!mime) {
-                            if (data.subType === "image")
+                            if (data.fileName.toLowerCase().endsWith(".jpg") || data.fileName.toLowerCase().endsWith(".jpeg")) {
                                 mime = "image/jpeg";
-                            else if (data.subType === "audio")
-                                mime = "audio/mpeg";
-                            else
+                            }
+                            else if (data.fileName.toLowerCase().endsWith(".png")) {
+                                mime = "image/png";
+                            }
+                            else if (data.subType === "image") {
+                                mime = "image/jpeg"; // デフォルト
+                            }
+                            else {
                                 mime = "application/octet-stream";
+                            }
                         }
-                        // Blob作成（ここでの [cleanData] という書き方が一番エラーが少ない）
                         const blob = new Blob([cleanData], { type: mime });
                         const url = URL.createObjectURL(blob);
-                        console.log(`[受信成功] MIME: ${mime}, サイズ: ${blob.size} bytes`);
+                        console.log(`[成功] 表示中: ${data.originalName} (MIME: ${mime})`);
+                        // 表示の床へ
                         addMediaBubble(url, data.fileName, data.originalName, false, data.subType);
                     }
                     else {
@@ -619,7 +626,7 @@ async function main() {
                     }
                 }
                 catch (e) {
-                    console.error("復号・表示失敗:", e);
+                    console.error("復号・表示に失敗しました:", e);
                 }
             }
         };
