@@ -79,10 +79,6 @@ async function main() {
     chatContainer.append(chatHeader, chatBox, inputContainer);
     document.body.appendChild(chatContainer);
 
-    // --- 1. 隠しインプット（画面には出さないが、appendChildは必要） ---
-    // --- 1. 表示の床（メディアバブル） ---
-// --- 1. 表示の床（音声・画像・ファイル対応） ---
-// --- 1. 表示の床（表示は元の名前、保存はUUID） ---
 function addMediaBubble(url: string, uuidName: string, originalName: string, isMe: boolean, subType: "image" | "file" | "audio") {
     const container = document.createElement("div");
     container.style.cssText = `
@@ -765,38 +761,42 @@ async function handleFileSelect(event: Event, subType: "image" | "file" | "audio
 } else if (data.type === "message" && data.name !== name) {
     try {
         if (!aesKeyhash) return;
-        
         const [iv, encryptedContent] = await Promise.all([
             base64ToUint8Array(data.iv),
             base64ToUint8Array(data.data)
         ]);
 
-        // 復号
         const decryptedBuffer = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
-        
-        // ★ここを強化！ 復号された生のバッファを新しい Uint8Array に入れて「純粋なバイナリ」にする
         const cleanData = new Uint8Array(decryptedBuffer);
 
         if (data.subType === "image" || data.subType === "file" || data.subType === "audio") {
-            // PNGが表示されない対策：型とデータを確定させる
-            const mime = data.mimeType || (data.subType === "image" ? "image/png" : "application/octet-stream");
-            
+            // ★超重要：送信側から届いた mimeType をそのまま使う
+            // もし空なら、subType から推測するが、基本は送信側が送る mimeType を信じる
+            let mime = data.mimeType;
+            if (!mime) {
+                if (data.subType === "image") mime = "image/jpeg";
+                else if (data.subType === "audio") mime = "audio/mpeg";
+                else mime = "application/octet-stream";
+            }
+
+            // Blob作成（ここでの [cleanData] という書き方が一番エラーが少ない）
             const blob = new Blob([cleanData], { type: mime });
             const url = URL.createObjectURL(blob);
             
-            // 表示の床へ（uuidName, originalName の順番に注意！）
+            console.log(`[受信成功] MIME: ${mime}, サイズ: ${blob.size} bytes`);
+            
             addMediaBubble(url, data.fileName, data.originalName, false, data.subType);
         } else {
-            // テキストメッセージ
             const messageText = new TextDecoder().decode(cleanData);
             addBubble(messageText, false);
         }
     } catch (e) {
-        console.error("復号・表示に失敗:", e);
+        console.error("復号・表示失敗:", e);
     }
 }
         };
     });
+
 
 
 
