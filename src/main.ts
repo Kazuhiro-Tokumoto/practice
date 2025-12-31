@@ -82,7 +82,8 @@ async function main() {
     // --- 1. 隠しインプット（画面には出さないが、appendChildは必要） ---
     // --- 1. 表示の床（メディアバブル） ---
 // --- 1. 表示の床（音声・画像・ファイル対応） ---
-function addMediaBubble(url: string, label: string, isMe: boolean, subType: "image" | "file" | "audio") {
+// --- 1. 表示の床（表示は元の名前、保存はUUID） ---
+function addMediaBubble(url: string, uuidName: string, originalName: string, isMe: boolean, subType: "image" | "file" | "audio") {
     const container = document.createElement("div");
     container.style.cssText = `
         max-width: 70%; 
@@ -93,30 +94,37 @@ function addMediaBubble(url: string, label: string, isMe: boolean, subType: "ima
         gap: 5px;
     `;
 
+    // 表示に使う名前（元の名前がなければUUIDを表示）
+    const displayName = originalName || uuidName;
+
     if (subType === "image") {
         const img = document.createElement("img");
         img.src = url;
         img.style.cssText = "width: 100%; max-width: 250px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer;";
         img.onclick = () => window.open(url, '_blank');
         container.appendChild(img);
+        
+        // 画像の下に元のファイル名を表示
+        const nameLabel = document.createElement("span");
+        nameLabel.textContent = displayName;
+        nameLabel.style.cssText = "font-size: 10px; color: #888; text-align: right;";
+        container.appendChild(nameLabel);
     } else if (subType === "audio") {
-        // 音声プレーヤーを表示
         const audio = document.createElement("audio");
         audio.controls = true;
         audio.src = url;
-        audio.style.cssText = "width: 100%; max-width: 250px; margin-top: 5px; outline: none;";
+        audio.style.cssText = "width: 100%; max-width: 250px; outline: none;";
         container.appendChild(audio);
         
-        // ラベル（UUID名）を表示
         const nameLabel = document.createElement("span");
-        nameLabel.textContent = label;
+        nameLabel.textContent = displayName;
         nameLabel.style.cssText = "font-size: 10px; color: #888; padding-left: 5px;";
         container.appendChild(nameLabel);
     } else {
         const link = document.createElement("a");
         link.href = url;
-        link.download = label; // 保存名は UUID.拡張子
-        link.textContent = `📁 ${label.substring(0, 25)}...`; // 表示もUUID
+        link.download = uuidName; // 保存される時は UUID
+        link.textContent = `📁 ${displayName}`; // 表示は 送信時の名前
         link.style.cssText = `
             padding: 12px; background: ${isMe ? "#0084ff" : "#fff"};
             color: ${isMe ? "white" : "#0084ff"}; border-radius: 10px;
@@ -128,20 +136,17 @@ function addMediaBubble(url: string, label: string, isMe: boolean, subType: "ima
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// --- 2. ファイル送信の入り口 ---
+// --- 2. 送信司令塔（originalNameを送信に含める） ---
 async function handleFileSelect(event: Event, subType: "image" | "file" | "audio") {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0];
     if (!file || !aesKeyhash) return;
 
-    // 音声ファイルなら自動的に audio 型へ
     let finalSubType = subType;
-    if (file.type.startsWith('audio/')) {
-        finalSubType = "audio";
-    }
+    if (file.type.startsWith('audio/')) finalSubType = "audio";
 
     const extension = file.name.split('.').pop();
-    const uuidName = `${crypto.randomUUID()}.${extension}`; // 保存・表示用のUUID名
+    const uuidName = `${crypto.randomUUID()}.${extension}`;
 
     try {
         const arrayBuffer = await file.arrayBuffer();
@@ -157,7 +162,8 @@ async function handleFileSelect(event: Event, subType: "image" | "file" | "audio
             type: "message",
             subType: finalSubType,
             mimeType: file.type,
-            fileName: uuidName,
+            fileName: uuidName,        // UUID
+            originalName: file.name,   // 元の名前（これ重要！）
             room: room,
             name: name,
             uuid: storedUuid,
@@ -167,14 +173,12 @@ async function handleFileSelect(event: Event, subType: "image" | "file" | "audio
 
         wss.send(JSON.stringify(msg));
 
-        // 自分の画面に出す
-        const blob = new Blob([plaintext], { type: file.type });
-        const url = URL.createObjectURL(blob);
-        addMediaBubble(url, uuidName, true, finalSubType);
+        const url = URL.createObjectURL(new Blob([plaintext], { type: file.type }));
+        addMediaBubble(url, uuidName, file.name, true, finalSubType);
         
         target.value = ""; 
     } catch (e) {
-        console.error("ファイル送信エラー:", e);
+        console.error("送信エラー:", e);
     }
 }
 
@@ -770,23 +774,21 @@ async function handleFileSelect(event: Event, subType: "image" | "file" | "audio
 } else if (data.type === "message" && data.name !== name) {
     try {
         if (!aesKeyhash) return;
-
         const [iv, encryptedContent] = await Promise.all([
             base64ToUint8Array(data.iv),
             base64ToUint8Array(data.data)
         ]);
-
         const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
 
-        // ★ audio も含めて判定するように修正
         if (data.subType === "image" || data.subType === "file" || data.subType === "audio") {
+            // ★ ここで Uint8Array に変換して Blob 化する（画像が表示されない対策）
             const blob = new Blob([new Uint8Array(decryptedArray)], { 
                 type: data.mimeType || "application/octet-stream" 
             });
             const url = URL.createObjectURL(blob);
             
-            // data.fileName(UUID) を渡す
-            addMediaBubble(url, data.fileName, false, data.subType);
+            // 引数に data.originalName も追加
+            addMediaBubble(url, data.fileName, data.originalName, false, data.subType);
         } else {
             const messageText = new TextDecoder().decode(decryptedArray);
             addBubble(messageText, false);
