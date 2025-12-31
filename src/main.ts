@@ -192,6 +192,31 @@ document.body.appendChild(pinContainer);
     // 3. 画面をリロードして初期状態（ログイン前）に戻す
     location.reload();
 }
+async function sha256(data: Uint8Array): Promise<Uint8Array> {
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return new Uint8Array(hash);
+}
+async function sha512(data: Uint8Array): Promise<Uint8Array> {
+  const hash = await crypto.subtle.digest("SHA-512", data);
+  return new Uint8Array(hash);
+}
+function combine(...arrays: Uint8Array[]): Uint8Array {
+  let totalLength = 0;
+  for (let i = 0; i < arrays.length; i++) {
+    totalLength += arrays[i].length;
+  }
+
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (let i = 0; i < arrays.length; i++) {
+    result.set(arrays[i], offset);
+    offset += arrays[i].length;
+  }
+  return result;
+}
+function generateRand(len: number = 32): Uint8Array {
+  return window.crypto.getRandomValues(new Uint8Array(len));
+}
 
 
 
