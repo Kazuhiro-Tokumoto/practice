@@ -44,8 +44,123 @@ async function main() {
     inputContainer.append(input, sendBtn);
     chatContainer.append(chatHeader, chatBox, inputContainer);
     document.body.appendChild(chatContainer);
-    // 実験
-    // 入力欄 (真ん中)
+    // --- 1. 隠しインプット（画面には出さないが、appendChildは必要） ---
+    // --- 1. 表示の床（メディアバブル） ---
+    function addMediaBubble(url, label, isMe, subType) {
+        const container = document.createElement("div");
+        container.style.cssText = `
+        max-width: 70%; 
+        margin: 10px 0;
+        align-self: ${isMe ? "flex-end" : "flex-start"};
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    `;
+        if (subType === "image") {
+            const img = document.createElement("img");
+            img.src = url;
+            img.style.cssText = "width: 100%; max-width: 250px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer;";
+            img.onclick = () => window.open(url, '_blank');
+            container.appendChild(img);
+        }
+        else {
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = label; // ここが UUID.拡張子 になる
+            link.textContent = `📁 ${label.substring(0, 20)}...`;
+            link.style.cssText = `
+            padding: 12px; background: ${isMe ? "#0084ff" : "#fff"};
+            color: ${isMe ? "white" : "#0084ff"}; border-radius: 10px;
+            border: 1px solid #0084ff; text-decoration: none; font-weight: bold; text-align: center;
+        `;
+            container.appendChild(link);
+        }
+        chatBox.appendChild(container);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    // --- 2. ファイル選択・暗号化・送信司令塔 ---
+    async function handleFileSelect(event, subType) {
+        const target = event.target;
+        const file = target.files?.[0];
+        if (!file || !aesKeyhash)
+            return;
+        // 名前を UUID + 拡張子 に作り変える
+        const extension = file.name.split('.').pop();
+        const uuidName = `${crypto.randomUUID()}.${extension}`;
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const plaintext = new Uint8Array(arrayBuffer);
+            const encrypted = await encrypt(aesKeyhash, plaintext);
+            const [ivB64, dataB64] = await Promise.all([
+                arrayBufferToBase64(encrypted.iv),
+                arrayBufferToBase64(encrypted.data)
+            ]);
+            const msg = {
+                type: "message",
+                subType: subType,
+                mimeType: file.type,
+                fileName: uuidName, // 保存名
+                originalName: file.name, // 表示用
+                room: room,
+                name: name,
+                uuid: storedUuid,
+                iv: ivB64,
+                data: dataB64
+            };
+            wss.send(JSON.stringify(msg));
+            // 自分の画面にも出す
+            const url = URL.createObjectURL(file);
+            addMediaBubble(url, uuidName, true, subType);
+            // 入力値をリセットして同じファイルを連続で選べるようにする
+            target.value = "";
+        }
+        catch (e) {
+            console.error("ファイル送信エラー:", e);
+        }
+    }
+    // --- 3. UIの設置（inputContainerへの追加） ---
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.style.display = "none";
+    document.body.appendChild(fileInput);
+    const photoInput = document.createElement("input");
+    photoInput.type = "file";
+    photoInput.accept = "image/*";
+    photoInput.style.display = "none";
+    document.body.appendChild(photoInput);
+    const photoBtn = document.createElement("button");
+    photoBtn.textContent = "📷";
+    photoBtn.style.cssText = "background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px;";
+    photoBtn.onclick = () => photoInput.click();
+    const fileBtn = document.createElement("button");
+    fileBtn.textContent = "📎";
+    fileBtn.style.cssText = "background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px;";
+    fileBtn.onclick = () => fileInput.click();
+    inputContainer.prepend(photoBtn, fileBtn);
+    fileInput.onchange = (e) => handleFileSelect(e, "file");
+    photoInput.onchange = (e) => handleFileSelect(e, "image");
+    // --- 4. 受信処理の書き換え (wss.onmessage 内の message 部分) ---
+    // ※ data.type === "message" の分岐の中にこれを入れてください
+    /*
+    try {
+        const [iv, encryptedContent] = await Promise.all([
+            base64ToUint8Array(data.iv),
+            base64ToUint8Array(data.data)
+        ]);
+        const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
+
+        if (data.subType === "image" || data.subType === "file") {
+            const blob = new Blob([decryptedArray], { type: data.mimeType || "application/octet-stream" });
+            const url = URL.createObjectURL(blob);
+            addMediaBubble(url, data.fileName, false, data.subType);
+        } else {
+            const messageText = new TextDecoder().decode(decryptedArray);
+            addBubble(messageText, false);
+        }
+    } catch (e) {
+        console.error("復号失敗:", e);
+    }
+    */
     // 1. 中央配置用のコンテナを作る
     const pinContainer = document.createElement("div");
     pinContainer.style.cssText = `
@@ -462,6 +577,27 @@ async function main() {
                 }
             }
             else if (data.type === "message" && data.name !== name) {
+                try {
+                    const [iv, encryptedContent] = await Promise.all([
+                        base64ToUint8Array(data.iv),
+                        base64ToUint8Array(data.data)
+                    ]);
+                    const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer);
+                    if (data.subType === "image" || data.subType === "file") {
+                        const blob = new Blob([decryptedArray.buffer], {
+                            type: data.mimeType || "application/octet-stream"
+                        });
+                        const url = URL.createObjectURL(blob);
+                        addMediaBubble(url, data.fileName, false, data.subType);
+                    }
+                    else {
+                        const messageText = new TextDecoder().decode(decryptedArray);
+                        addBubble(messageText, false);
+                    }
+                }
+                catch (e) {
+                    console.error("復号失敗:", e);
+                }
                 try {
                     if (!aeskey)
                         return;
