@@ -103,7 +103,7 @@ async function main() {
         if (!file || !aesKeyhash)
             return;
         // ★ 物理班の安全装置（10MB制限）
-        const MAX_SIZE = 10 * 1024 * 1024;
+        const MAX_SIZE = 15 * 1024 * 1024;
         if (file.size > MAX_SIZE) {
             addSystemMsg(`⚠️ サイズ超過: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
             addSystemMsg("分割機能がないため、10MB以下のファイルにしてください。");
