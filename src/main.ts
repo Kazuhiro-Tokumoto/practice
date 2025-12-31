@@ -93,23 +93,29 @@ function addMediaBubble(url: string, uuidName: string, originalName: string, isM
         border-radius: 15px;
         ${isMe ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"}
     `;
+    const isVideo = originalName.toLowerCase().endsWith(".mp4") || 
+                    originalName.toLowerCase().endsWith(".mov") || 
+                    originalName.toLowerCase().endsWith(".webm");
 
     const displayName = originalName || uuidName;
 
-    if (subType === "image") {
+if (subType === "image") {
         const img = document.createElement("img");
         img.src = url;
-        img.style.cssText = "width: 100%; max-width: 250px; border-radius: 10px; cursor: pointer; display: block;";
-        img.onclick = () => window.open(url, '_blank');
+        img.style.cssText = "width: 100%; max-width: 250px; border-radius: 12px;";
         container.appendChild(img);
+    } else if (isVideo) {
+        // --- 🎥 動画プレーヤーを設置 ---
+        const video = document.createElement("video");
+        video.src = url;
+        video.controls = true; // 再生ボタン、シークバーを表示
+        video.style.cssText = "width: 100%; max-width: 250px; border-radius: 12px; outline: none;";
+        container.appendChild(video);
     } else if (subType === "audio") {
-        // --- 音声プレーヤーの構築 ---
         const audio = document.createElement("audio");
         audio.src = url;
-        audio.controls = true; // これを確実にセット
-        audio.style.cssText = "width: 100%; min-width: 200px; max-width: 250px; height: 40px;";
-        // audioタグは append してからロードさせると確実
-        container.appendChild(audio);
+        audio.controls = true;
+        audio.style.cssText = "width: 100%; max-width: 250px;";
     } else {
         const link = document.createElement("a");
         link.href = url;
@@ -151,6 +157,7 @@ const target = event.target as HTMLInputElement;
 
     let finalSubType = subType;
     if (file.type.startsWith('audio/')) finalSubType = "audio";
+    if (file.type.startsWith('video/')) finalSubType = "file";
 
     const extension = file.name.split('.').pop();
     const uuidName = `${crypto.randomUUID()}.${extension}`;
