@@ -1,3 +1,6 @@
+//npx wscat -c wss://mail.shudo-physics.com/
+
+
 import {
     generateKeyPair,
     deriveSharedSecret,
@@ -688,6 +691,8 @@ function addBubble(text: string, isMe: boolean) {
             if (data.type === "join-nack") addSystemMsg("エラー: ルームに参加できませんでした");
             if (data.type === "quit-broadcast" || data.type === "leave" || data.type === "leave-broadcast") {
                 addSystemMsg((data.name ? data.name.substring(0, 8) : "誰か") + "が退出しました");
+                aesKeyhash = null; // 鍵をリセット
+                aeskey = null;
             }
             if (data.type === "join-broadcast") {
                 addSystemMsg(data.name.substring(0, 8) + "が参加しました");
@@ -764,7 +769,13 @@ if (data.type === "dh-start" || data.type === "join-broadcast") {
                                 combine(
                                     await sha512(
                                         combine(
-                                            await sha512(firstRand), await sha512(secondRand)
+                                            await sha512(
+                                                firstRand
+                                            )
+                                            , 
+                                            await sha512(
+                                                secondRand
+                                            )
                                         )
                                     ), await sha512(aes as Uint8Array
 
@@ -772,7 +783,8 @@ if (data.type === "dh-start" || data.type === "join-broadcast") {
                                 )
                             )
                         )
-                    );
+                    )
+                    console.log(" AES鍵ハッシュが完成しました！");
 
                 } catch (e) {
                     console.error("鍵交換エラー:", e);

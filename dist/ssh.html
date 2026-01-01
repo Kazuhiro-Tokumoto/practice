@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Universal SSH Web Client</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; background-color: #000; overflow: hidden; font-family: sans-serif; }
+        #loginOverlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #1e1e1e; padding: 30px; border-radius: 8px; z-index: 100;
+            color: #ccc; width: 420px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        #terminal-container { width: 100%; height: 100%; display: none; }
+        .form-group { margin-bottom: 15px; }
+        .flex { display: flex; gap: 10px; }
+        label { display: block; font-size: 0.8em; color: #4ec9b0; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 10px; background: #252526; border: 1px solid #3c3c3c; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        .btn { background: #0e639c; color: white; border: none; padding: 12px; cursor: pointer; width: 100%; border-radius: 4px; font-weight: bold; margin-top: 10px; }
+        #status { margin-top: 10px; text-align: center; font-size: 0.85em; min-height: 1.2em; color: #f48771; }
+    </style>
+</head>
+<body>
+
+    <div id="loginOverlay">
+        <h2 style="text-align:center; margin-top:0;">SSH Universal Gateway</h2>
+        
+        <div class="form-group">
+            <label>Target SSH Host (接続先IPやドメイン)</label>
+            <div class="flex">
+                <input type="text" id="targetHost" placeholder="192.168.1.xxx" style="flex:3;">
+                <input type="text" id="targetPort" value="22" style="flex:1;">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>SSH Username</label>
+            <input type="text" id="username" placeholder="pi / root">
+        </div>
+
+        <div class="form-group">
+            <label>Private Key File</label>
+            <input type="file" id="keyFile">
+        </div>
+
+        <div id="status"></div>
+        <button class="btn" id="connectBtn">Connect</button>
+    </div>
+
+    <div id="terminal-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+    <script>
+        const GATEWAY_URL = "wss://mail.shudo-physics.com:40000";
+        let socket = null, term = null, fitAddon = null, isAuthenticated = false;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const statusDiv = document.getElementById('status');
+
+        async function connect() {
+            const host = document.getElementById('targetHost').value;
+            const port = parseInt(document.getElementById('targetPort').value);
+            const user = document.getElementById('username').value;
+            const file = document.getElementById('keyFile').files[0];
+
+            if (!host || !user || !file) {
+                statusDiv.innerText = "情報をすべて入力してください";
+                return;
+            }
+
+            try {
+                statusDiv.innerText = "鍵を読み込み中...";
+                const keyText = await file.text();
+                
+                statusDiv.innerText = "ゲートウェイに接続中...";
+                socket = new WebSocket(GATEWAY_URL);
+
+                socket.onopen = () => {
+                    // 認証情報を送信
+                    socket.send(JSON.stringify({
+                        type: 'auth',
+                        host: host,
+                        port: port,
+                        username: user,
+                        privateKey: keyText,
+                        rows: 24, cols: 80
+                    }));
+                };
+
+                socket.onmessage = (ev) => {
+                    if (!isAuthenticated) {
+                        if (ev.data.includes('AUTHENTICATED')) {
+                            isAuthenticated = true;
+                            document.getElementById('loginOverlay').style.display = 'none';
+                            document.getElementById('terminal-container').style.display = 'block';
+                            initTerminal();
+                        } else {
+                            statusDiv.innerText = ev.data;
+                        }
+                        return;
+                    }
+                    term.write(ev.data);
+                };
+
+                socket.onclose = () => {
+                    if (term) term.write('\r\n\x1b[31m[Disconnected from Gateway]\x1b[0m\r\n');
+                    else statusDiv.innerText = "切断されました";
+                };
+
+            } catch (err) {
+                statusDiv.innerText = "エラー: " + err.message;
+            }
+        }
+
+        function initTerminal() {
+            term = new Terminal({ cursorBlink: true, fontSize: 14, theme: { background: '#000000' } });
+            fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+            term.open(document.getElementById('terminal-container'));
+            fitAddon.fit();
+
+            // スマート Ctrl+C
+            term.attachCustomKeyEventHandler((e) => {
+                if (e.type === 'keydown' && (e.ctrlKey || e.metaKey) && e.key === 'c') {
+                    const sel = term.getSelection();
+                    if (sel) { navigator.clipboard.writeText(sel); return false; }
+                }
+                return true;
+            });
+
+            term.onData(data => {
+                if (socket.readyState === WebSocket.OPEN) 
+                    socket.send(JSON.stringify({ type: 'input', data: data }));
+            });
+
+            window.addEventListener('resize', () => {
+                fitAddon.fit();
+                socket.send(JSON.stringify({ type: 'resize', rows: term.rows, cols: term.cols }));
+            });
+            term.focus();
+        }
+
+        connectBtn.addEventListener('click', connect);
+        document.addEventListener('keydown', e => { if (!isAuthenticated && e.key === 'Enter') connect(); });
+    </script>
+</body>
+</html>

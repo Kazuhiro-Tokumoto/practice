@@ -1,3 +1,4 @@
+//npx wscat -c wss://mail.shudo-physics.com/
 import { generateEd25519KeyPair, generateX25519KeyPair } from "./mojyu-ru/crypto/ecdh.js";
 import { arrayBufferToBase64, base64ToUint8Array } from "./mojyu-ru/base64.js"; // 16進数変換のみ残す
 import { generateSalt, generateMasterSeed } from "./mojyu-ru/crypto/saltaes.js";
@@ -537,6 +538,8 @@ async function main() {
                 addSystemMsg("エラー: ルームに参加できませんでした");
             if (data.type === "quit-broadcast" || data.type === "leave" || data.type === "leave-broadcast") {
                 addSystemMsg((data.name ? data.name.substring(0, 8) : "誰か") + "が退出しました");
+                aesKeyhash = null; // 鍵をリセット
+                aeskey = null;
             }
             if (data.type === "join-broadcast") {
                 addSystemMsg(data.name.substring(0, 8) + "が参加しました");
@@ -596,6 +599,7 @@ async function main() {
                         secondRand = rand; // 自分が後
                     }
                     aesKeyhash = await deriveAesKeySafe(await sha256(await sha512(combine(await sha512(combine(await sha512(firstRand), await sha512(secondRand))), await sha512(aes)))));
+                    console.log(" AES鍵ハッシュが完成しました！");
                 }
                 catch (e) {
                     console.error("鍵交換エラー:", e);
