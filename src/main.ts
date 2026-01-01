@@ -80,9 +80,9 @@ async function main() {
     chatContainer.append(chatHeader, chatBox, inputContainer);
     document.body.appendChild(chatContainer);
 
-function addMediaBubble(url: string, uuidName: string, originalName: string, isMe: boolean, subType: "image" | "file" | "audio") {
-    const container = document.createElement("div");
-    container.style.cssText = `
+    function addMediaBubble(url: string, uuidName: string, originalName: string, isMe: boolean, subType: "image" | "file" | "audio") {
+        const container = document.createElement("div");
+        container.style.cssText = `
         max-width: 70%; 
         margin: 10px 0;
         padding: 8px;
@@ -94,11 +94,13 @@ function addMediaBubble(url: string, uuidName: string, originalName: string, isM
         border-radius: 15px;
         ${isMe ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"}
     `;
-    const isVideo = originalName.toLowerCase().endsWith(".mp4") || 
-                    originalName.toLowerCase().endsWith(".mov") || 
-                    originalName.toLowerCase().endsWith(".webm");
+        const isVideo = originalName.toLowerCase().endsWith(".mp4") ||
+            originalName.toLowerCase().endsWith(".mov") ||
+            originalName.toLowerCase().endsWith(".webm");
 
-    const displayName = originalName || uuidName;
+            const isAudio = originalName.toLowerCase().endsWith(".m4a") || originalName.toLowerCase().endsWith(".mp3") || originalName.toLowerCase().endsWith(".wav") || subType === "audio";
+
+        const displayName = originalName || uuidName;
 
 if (subType === "image") {
         const img = document.createElement("img");
@@ -106,96 +108,100 @@ if (subType === "image") {
         img.style.cssText = "width: 100%; max-width: 250px; border-radius: 12px;";
         container.appendChild(img);
     } else if (isVideo) {
-        // --- 🎥 動画プレーヤーを設置 ---
+        // 動画プレーヤー
         const video = document.createElement("video");
         video.src = url;
-        video.controls = true; // 再生ボタン、シークバーを表示
-        video.style.cssText = "width: 100%; max-width: 250px; border-radius: 12px; outline: none;";
+        video.controls = true;
+        video.style.cssText = "width: 100%; max-width: 250px; border-radius: 12px;";
         container.appendChild(video);
-    } else if (subType === "audio") {
+    } else if (isAudio) {
+        // --- 🎤 ここ！音声プレーヤーを確実に呼び出す ---
         const audio = document.createElement("audio");
         audio.src = url;
         audio.controls = true;
-        audio.style.cssText = "width: 100%; max-width: 250px;";
-    } else {
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = uuidName;
-        link.textContent = `${displayName}`;
-        link.style.cssText = `
+        // m4aなどはブラウザによってサイズが不安定なので幅を固定する
+        audio.style.cssText = "width: 100%; min-width: 200px; max-width: 250px; height: 40px;";
+        container.appendChild(audio);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = uuidName;
+            link.textContent = `${displayName}`;
+            link.style.cssText = `
             padding: 10px; background: rgba(255,255,255,0.2);
             color: ${isMe ? "white" : "#0084ff"}; border-radius: 8px;
             text-decoration: none; font-weight: bold; text-align: center;
             border: 1px solid rgba(0,0,0,0.1);
         `;
-        container.appendChild(link);
+            container.appendChild(link);
+        }
+
+        // ファイル名ラベル（共通）
+        const nameLabel = document.createElement("span");
+        nameLabel.textContent = displayName;
+        nameLabel.style.cssText = `font-size: 10px; color: ${isMe ? "rgba(255,255,255,0.8)" : "#888"}; margin-top: 2px;`;
+        container.appendChild(nameLabel);
+
+        chatBox.appendChild(container);
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // ファイル名ラベル（共通）
-    const nameLabel = document.createElement("span");
-    nameLabel.textContent = displayName;
-    nameLabel.style.cssText = `font-size: 10px; color: ${isMe ? "rgba(255,255,255,0.8)" : "#888"}; margin-top: 2px;`;
-    container.appendChild(nameLabel);
+    // --- 2. 送信司令塔（originalNameを送信に含める） ---
+    async function handleFileSelect(event: Event, subType: "image" | "file" | "audio") {
+        const target = event.target as HTMLInputElement;
+        const file = target.files?.[0];
+        if (!file || !aesKeyhash) return;
 
-    chatBox.appendChild(container);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
+        // ★ 物理班の安全装置（10MB制限）
+        const MAX_SIZE = 15 * 1024 * 1024;
+        if (file.size > MAX_SIZE) {
+            addSystemMsg(`⚠️ サイズ超過: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+            addSystemMsg("分割機能がないため、15MB以下のファイルにしてください。");
+            target.value = "";
+            return;
+        }
 
-// --- 2. 送信司令塔（originalNameを送信に含める） ---
-async function handleFileSelect(event: Event, subType: "image" | "file" | "audio") {
-const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file || !aesKeyhash) return;
+        let finalSubType = subType;
+        if (file.type.startsWith('audio/')) finalSubType = "audio";
+        if (file.type.startsWith('video/')) finalSubType = "file";
 
-    // ★ 物理班の安全装置（10MB制限）
-    const MAX_SIZE = 15 * 1024 * 1024; 
-    if (file.size > MAX_SIZE) {
-        addSystemMsg(`⚠️ サイズ超過: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
-        addSystemMsg("分割機能がないため、10MB以下のファイルにしてください。");
-        target.value = "";
-        return;
+        const extension = file.name.split('.').pop();
+        const uuidName = `${crypto.randomUUID()}.${extension}`;
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const plaintext = new Uint8Array(arrayBuffer);
+            const encrypted = await encrypt(aesKeyhash, plaintext);
+
+            const [ivB64, dataB64] = await Promise.all([
+                arrayBufferToBase64(encrypted.iv),
+                arrayBufferToBase64(encrypted.data)
+            ]);
+
+            const msg = {
+                type: "message",
+                subType: finalSubType,
+                mimeType: file.type,
+                fileName: uuidName, // UUID
+                originalName: file.name, // 元の名前（これ重要！）
+                room: room,
+                name: name,
+                uuid: storedUuid,
+                iv: ivB64,
+                data: dataB64
+            };
+
+            wss.send(JSON.stringify(msg));
+
+            const url = URL.createObjectURL(new Blob([plaintext], {
+                type: file.type
+            }));
+            addMediaBubble(url, uuidName, file.name, true, finalSubType);
+
+            target.value = "";
+        } catch (e) {
+            console.error("送信エラー:", e);
+        }
     }
-
-    let finalSubType = subType;
-    if (file.type.startsWith('audio/')) finalSubType = "audio";
-    if (file.type.startsWith('video/')) finalSubType = "file";
-
-    const extension = file.name.split('.').pop();
-    const uuidName = `${crypto.randomUUID()}.${extension}`;
-
-    try {
-        const arrayBuffer = await file.arrayBuffer();
-        const plaintext = new Uint8Array(arrayBuffer);
-        const encrypted = await encrypt(aesKeyhash, plaintext);
-
-        const [ivB64, dataB64] = await Promise.all([
-            arrayBufferToBase64(encrypted.iv),
-            arrayBufferToBase64(encrypted.data)
-        ]);
-
-        const msg = {
-            type: "message",
-            subType: finalSubType,
-            mimeType: file.type,
-            fileName: uuidName,        // UUID
-            originalName: file.name,   // 元の名前（これ重要！）
-            room: room,
-            name: name,
-            uuid: storedUuid,
-            iv: ivB64,
-            data: dataB64
-        };
-
-        wss.send(JSON.stringify(msg));
-
-        const url = URL.createObjectURL(new Blob([plaintext], { type: file.type }));
-        addMediaBubble(url, uuidName, file.name, true, finalSubType);
-        
-        target.value = ""; 
-    } catch (e) {
-        console.error("送信エラー:", e);
-    }
-}
 
     // --- 3. UIの設置（inputContainerへの追加） ---
     const fileInput = document.createElement("input");
@@ -208,33 +214,10 @@ const target = event.target as HTMLInputElement;
     fileBtn.style.cssText = "background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px;";
     fileBtn.onclick = () => fileInput.click();
 
-    inputContainer.prepend( fileBtn);
+    inputContainer.prepend(fileBtn);
 
     fileInput.onchange = (e) => handleFileSelect(e, "file");
 
-
-    // --- 4. 受信処理の書き換え (ws＋---
-    // ※ data.type === "message" の分岐の中にこれを入れてください
-    /*
-    try {
-        const [iv, encryptedContent] = await Promise.all([
-            base64ToUint8Array(data.iv),
-            base64ToUint8Array(data.data)
-        ]);
-        const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
-
-        if (data.subType === "image" || data.subType === "file") {
-            const blob = new Blob([decryptedArray], { type: data.mimeType || "application/octet-stream" });
-            const url = URL.createObjectURL(blob);
-            addMediaBubble(url, data.fileName, false, data.subType);
-        } else {
-            const messageText = new TextDecoder().decode(decryptedArray);
-            addBubble(messageText, false);
-        }
-    } catch (e) {
-        console.error("復号失敗:", e);
-    }
-    */
     // 1. 中央配置用のコンテナを作る
     const pinContainer = document.createElement("div");
     pinContainer.style.cssText = `
@@ -750,52 +733,54 @@ const target = event.target as HTMLInputElement;
                 addSystemMsg("メッセージを送信できます.2回出る可能性がありますが、　気にしないでください　バグです");
 
 
-// wss.onmessage の中の data.type === "message" の部分
-} else if (data.type === "message" && data.name !== name) {
-    try {
-        if (!aesKeyhash) return;
-        
-        const [iv, encryptedContent] = await Promise.all([
-            base64ToUint8Array(data.iv),
-            base64ToUint8Array(data.data)
-        ]);
+                // wss.onmessage の中の data.type === "message" の部分
+            } else if (data.type === "message" && data.name !== name) {
+                try {
+                    if (!aesKeyhash) return;
 
-        const decryptedBuffer = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
-        
-        // ★修正1：データを確実にコピーしてバイナリとして安定させる
-        const cleanData = new Uint8Array(decryptedBuffer);
+                    const [iv, encryptedContent] = await Promise.all([
+                        base64ToUint8Array(data.iv),
+                        base64ToUint8Array(data.data)
+                    ]);
 
-        if (data.subType === "image" || data.subType === "file" || data.subType === "audio") {
-            // ★修正2：MIMEタイプを動的に判定
-            // 届いた data.mimeType を優先し、なければ拡張子から推測
-            let mime = data.mimeType;
-            if (!mime) {
-                if (data.fileName.toLowerCase().endsWith(".jpg") || data.fileName.toLowerCase().endsWith(".jpeg")) {
-                    mime = "image/jpeg";
-                } else if (data.fileName.toLowerCase().endsWith(".png")) {
-                    mime = "image/png";
-                } else if (data.subType === "image") {
-                    mime = "image/jpeg"; // デフォルト
-                } else {
-                    mime = "application/octet-stream";
+                    const decryptedBuffer = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
+
+                    // ★修正1：データを確実にコピーしてバイナリとして安定させる
+                    const cleanData = new Uint8Array(decryptedBuffer);
+
+                    if (data.subType === "image" || data.subType === "file" || data.subType === "audio") {
+                        // ★修正2：MIMEタイプを動的に判定
+                        // 届いた data.mimeType を優先し、なければ拡張子から推測
+                        let mime = data.mimeType;
+                        if (!mime) {
+                            if (data.fileName.toLowerCase().endsWith(".jpg") || data.fileName.toLowerCase().endsWith(".jpeg")) {
+                                mime = "image/jpeg";
+                            } else if (data.fileName.toLowerCase().endsWith(".png")) {
+                                mime = "image/png";
+                            } else if (data.subType === "image") {
+                                mime = "image/jpeg"; // デフォルト
+                            } else {
+                                mime = "application/octet-stream";
+                            }
+                        }
+
+                        const blob = new Blob([cleanData], {
+                            type: mime
+                        });
+                        const url = URL.createObjectURL(blob);
+
+                        console.log(`[成功] 表示中: ${data.originalName} (MIME: ${mime})`);
+
+                        // 表示の床へ
+                        addMediaBubble(url, data.fileName, data.originalName, false, data.subType);
+                    } else {
+                        const messageText = new TextDecoder().decode(cleanData);
+                        addBubble(messageText, false);
+                    }
+                } catch (e) {
+                    console.error("復号・表示に失敗しました:", e);
                 }
             }
-
-            const blob = new Blob([cleanData], { type: mime });
-            const url = URL.createObjectURL(blob);
-            
-            console.log(`[成功] 表示中: ${data.originalName} (MIME: ${mime})`);
-            
-            // 表示の床へ
-            addMediaBubble(url, data.fileName, data.originalName, false, data.subType);
-        } else {
-            const messageText = new TextDecoder().decode(cleanData);
-            addBubble(messageText, false);
-        }
-    } catch (e) {
-        console.error("復号・表示に失敗しました:", e);
-    }
-}
         };
     });
 

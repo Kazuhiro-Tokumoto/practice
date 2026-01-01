@@ -61,6 +61,7 @@ async function main() {
         const isVideo = originalName.toLowerCase().endsWith(".mp4") ||
             originalName.toLowerCase().endsWith(".mov") ||
             originalName.toLowerCase().endsWith(".webm");
+        const isAudio = originalName.toLowerCase().endsWith(".m4a") || originalName.toLowerCase().endsWith(".mp3") || originalName.toLowerCase().endsWith(".wav") || subType === "audio";
         const displayName = originalName || uuidName;
         if (subType === "image") {
             const img = document.createElement("img");
@@ -69,20 +70,21 @@ async function main() {
             container.appendChild(img);
         }
         else if (isVideo) {
-            // --- 🎥 動画プレーヤーを設置 ---
+            // 動画プレーヤー
             const video = document.createElement("video");
             video.src = url;
-            video.controls = true; // 再生ボタン、シークバーを表示
-            video.style.cssText = "width: 100%; max-width: 250px; border-radius: 12px; outline: none;";
+            video.controls = true;
+            video.style.cssText = "width: 100%; max-width: 250px; border-radius: 12px;";
             container.appendChild(video);
         }
-        else if (subType === "audio") {
+        else if (isAudio) {
+            // --- 🎤 ここ！音声プレーヤーを確実に呼び出す ---
             const audio = document.createElement("audio");
             audio.src = url;
             audio.controls = true;
-            audio.style.cssText = "width: 100%; max-width: 250px;";
-        }
-        else {
+            // m4aなどはブラウザによってサイズが不安定なので幅を固定する
+            audio.style.cssText = "width: 100%; min-width: 200px; max-width: 250px; height: 40px;";
+            container.appendChild(audio);
             const link = document.createElement("a");
             link.href = url;
             link.download = uuidName;
@@ -113,7 +115,7 @@ async function main() {
         const MAX_SIZE = 15 * 1024 * 1024;
         if (file.size > MAX_SIZE) {
             addSystemMsg(`⚠️ サイズ超過: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
-            addSystemMsg("分割機能がないため、10MB以下のファイルにしてください。");
+            addSystemMsg("分割機能がないため、15MB以下のファイルにしてください。");
             target.value = "";
             return;
         }
@@ -145,7 +147,9 @@ async function main() {
                 data: dataB64
             };
             wss.send(JSON.stringify(msg));
-            const url = URL.createObjectURL(new Blob([plaintext], { type: file.type }));
+            const url = URL.createObjectURL(new Blob([plaintext], {
+                type: file.type
+            }));
             addMediaBubble(url, uuidName, file.name, true, finalSubType);
             target.value = "";
         }
@@ -164,28 +168,6 @@ async function main() {
     fileBtn.onclick = () => fileInput.click();
     inputContainer.prepend(fileBtn);
     fileInput.onchange = (e) => handleFileSelect(e, "file");
-    // --- 4. 受信処理の書き換え (ws＋---
-    // ※ data.type === "message" の分岐の中にこれを入れてください
-    /*
-    try {
-        const [iv, encryptedContent] = await Promise.all([
-            base64ToUint8Array(data.iv),
-            base64ToUint8Array(data.data)
-        ]);
-        const decryptedArray = await decrypt(aesKeyhash, iv, encryptedContent.buffer as ArrayBuffer);
-
-        if (data.subType === "image" || data.subType === "file") {
-            const blob = new Blob([decryptedArray], { type: data.mimeType || "application/octet-stream" });
-            const url = URL.createObjectURL(blob);
-            addMediaBubble(url, data.fileName, false, data.subType);
-        } else {
-            const messageText = new TextDecoder().decode(decryptedArray);
-            addBubble(messageText, false);
-        }
-    } catch (e) {
-        console.error("復号失敗:", e);
-    }
-    */
     // 1. 中央配置用のコンテナを作る
     const pinContainer = document.createElement("div");
     pinContainer.style.cssText = `
@@ -612,7 +594,9 @@ async function main() {
                                 mime = "application/octet-stream";
                             }
                         }
-                        const blob = new Blob([cleanData], { type: mime });
+                        const blob = new Blob([cleanData], {
+                            type: mime
+                        });
                         const url = URL.createObjectURL(blob);
                         console.log(`[成功] 表示中: ${data.originalName} (MIME: ${mime})`);
                         // 表示の床へ
