@@ -100,8 +100,8 @@ async function main() {
         // ファイル名ラベル（共通）
         const nameLabel = document.createElement("a");
         nameLabel.href = url; // 復号されたデータのURL
-        nameLabel.download = uuidName; // 保存時のファイル名（UUID）
-        nameLabel.textContent = ` ${displayName}`; // 画面上の表示名
+        nameLabel.download = originalName; // 保存時のファイル名（UUID）
+        nameLabel.textContent = `DLfile ${displayName}`; // 画面上の表示名
         nameLabel.style.cssText = `
     font-size: 11px; 
     color: ${isMe ? "rgba(255,255,255,0.9)" : "#0084ff"}; 
