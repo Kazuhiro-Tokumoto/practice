@@ -747,7 +747,7 @@ const target = event.target as HTMLInputElement;
                     console.error("鍵交換エラー:", e);
                 }
                 console.log("🔑 鍵交換プロセス完了");
-                addSystemMsg("メッセージを送信できます.");
+                addSystemMsg("メッセージを送信できます.2回出る可能性がありますが、　気にしないでください　バグです");
 
 
 // wss.onmessage の中の data.type === "message" の部分
