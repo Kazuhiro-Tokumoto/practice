@@ -778,7 +778,7 @@ if (data.type === "dh-start" || data.type === "join-broadcast") {
                     console.error("鍵交換エラー:", e);
                 }
                 console.log("🔑 鍵交換プロセス完了");
-                addSystemMsg("メッセージを送信できます.2回出る可能性がありますが、　気にしないでください　バグです");
+                addSystemMsg("メッセージを送信できます");
 
 
                 // wss.onmessage の中の data.type === "message" の部分
