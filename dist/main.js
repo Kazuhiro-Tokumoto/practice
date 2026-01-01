@@ -154,6 +154,7 @@ async function main() {
     async function processFileAndSend(file, subType) {
         if (!aesKeyhash)
             return;
+        addSystemMsg("鍵がまだ交換されていません。相手が参加するまでお待ちください。");
         // 物理班の安全装置
         const MAX_SIZE = 15 * 1024 * 1024;
         if (file.size > MAX_SIZE) {
@@ -306,6 +307,7 @@ async function main() {
     async function sendEncryptedMessage(text, aeskey) {
         if (!aeskey) {
             console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
+            addSystemMsg("鍵がまだ交換されていません。相手が参加するまでお待ちください。");
             return;
         }
         try {

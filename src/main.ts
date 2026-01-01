@@ -204,6 +204,7 @@ chatBox.addEventListener("drop", async (e) => {
 // ★ 新しく作る：ファイルを受け取って送信するだけの「心臓部」
 async function processFileAndSend(file: File, subType: "image" | "file" | "audio") {
     if (!aesKeyhash) return;
+    addSystemMsg("鍵がまだ交換されていません。相手が参加するまでお待ちください。");
 
     // 物理班の安全装置
     const MAX_SIZE = 15 * 1024 * 1024;
@@ -386,6 +387,7 @@ async function processFileAndSend(file: File, subType: "image" | "file" | "audio
     async function sendEncryptedMessage(text: string, aeskey: CryptoKey) {
         if (!aeskey) {
             console.error("エラー: AES鍵がまだ生成されていません。相手が接続するまで待ってください。");
+            addSystemMsg("鍵がまだ交換されていません。相手が参加するまでお待ちください。");
             return;
         }
         try {
