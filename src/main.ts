@@ -162,9 +162,6 @@ chatBox.appendChild(container);
 chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    window.addEventListener("dragover", (e) => e.preventDefault());
-window.addEventListener("drop", (e) => e.preventDefault());
-
 // ★ chatBoxが「ドロップ受付中」であることを明示する
 chatBox.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -172,21 +169,28 @@ chatBox.addEventListener("dragover", (e) => {
      chatBox.style.backgroundColor = "rgba(0,132,255,0.1)"; // ドラッグ中に色を変えると「ここだ！」ってわかります
 });
 
+chatBox.addEventListener("dragleave", () => {
+    chatBox.style.backgroundColor = ""; // 背景をクリア
+});
+
+// 3. ドロップした時（ファイルを処理して、色も戻す）
 chatBox.addEventListener("drop", async (e) => {
     e.preventDefault();
+    chatBox.style.backgroundColor = ""; // ★ドロップ完了時も元に戻す
+
     const files = e.dataTransfer?.files;
     if (!files || files.length === 0) return;
 
     const file = files[0];
     
-    // MIMEタイプから subType を推測
     let subType: "image" | "file" | "audio" = "file";
     if (file.type.startsWith("image/")) subType = "image";
     if (file.type.startsWith("audio/")) subType = "audio";
-    if (file.type.startsWith("video/")) subType = "image"; // 動画もimage枠で判定
+    if (file.type.startsWith("video/")) subType = "image";
 
     await processFileAndSend(file, subType);
 });
+
 
     async function handleFileSelect(event: Event, subType: "image" | "file" | "audio") {
     const target = event.target as HTMLInputElement;
