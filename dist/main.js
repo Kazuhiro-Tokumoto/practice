@@ -98,9 +98,18 @@ async function main() {
             container.appendChild(link);
         }
         // ファイル名ラベル（共通）
-        const nameLabel = document.createElement("span");
-        nameLabel.textContent = displayName;
-        nameLabel.style.cssText = `font-size: 10px; color: ${isMe ? "rgba(255,255,255,0.8)" : "#888"}; margin-top: 2px;`;
+        const nameLabel = document.createElement("a");
+        nameLabel.href = url; // 復号されたデータのURL
+        nameLabel.download = uuidName; // 保存時のファイル名（UUID）
+        nameLabel.textContent = ` ${displayName}`; // 画面上の表示名
+        nameLabel.style.cssText = `
+    font-size: 11px; 
+    color: ${isMe ? "rgba(255,255,255,0.9)" : "#0084ff"}; 
+    margin-top: 4px;
+    text-decoration: underline;
+    cursor: pointer;
+    word-break: break-all;
+`;
         container.appendChild(nameLabel);
         chatBox.appendChild(container);
         chatBox.scrollTop = chatBox.scrollHeight;
