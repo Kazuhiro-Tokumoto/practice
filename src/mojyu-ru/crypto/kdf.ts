@@ -68,3 +68,4 @@ export async function deriveAesKeySafe(rawSeed: Uint8Array): Promise<CryptoKey> 
 
         return data;
     }
+    

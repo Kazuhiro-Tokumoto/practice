@@ -168,7 +168,7 @@ chatBox.scrollTop = chatBox.scrollHeight;
             addSystemMsg(`⚠️ サイズ超過: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
             addSystemMsg("分割機能がないため、15MB以下のファイルにしてください。");
             target.value = "";
-            return;
+            return
         }
 
         let finalSubType = subType;
@@ -607,6 +607,7 @@ function addBubble(text: string, isMe: boolean) {
     const base64salt = await arrayBufferToBase64(salt);
     let keys: any;
     let rand: Uint8Array = crypto.getRandomValues(new Uint8Array(32));
+    const dhSentHistory = new Map<string, number>();
 
     // DB用のパスワードとなんか、　まぁええやろ
     const supabase = createClient(
@@ -691,14 +692,29 @@ function addBubble(text: string, isMe: boolean) {
             if (data.type === "join-broadcast") {
                 addSystemMsg(data.name.substring(0, 8) + "が参加しました");
             }
+if (data.type === "dh-start" || data.type === "join-broadcast") {
+    if (data.name === name) return;
 
-            if (data.type === "dh-start" || data.type === "join-broadcast") {
-                if (data.name === name) return;
-                const dhmsg = dhs(event, name, room, storedUuid, rand);
-                if (dhmsg) {
-                    wss.send(JSON.stringify(dhmsg));
-                    console.log("自分のDHを送信完了");
-                }
+    // ★追加：直近1秒以内に、この相手(uuid)に鍵を送っていたら無視する
+    const targetUuid = data.uuid; // 相手のUUIDが入っていると仮定
+    const now = Date.now();
+    const lastSent = dhSentHistory.get(targetUuid) || 0;
+
+    // 1000ミリ秒(1秒)未満の連投ならスキップ
+    if (now - lastSent < 1000) {
+        console.log(`⚠️ ${data.type} 重複のため無視しました`);
+        return;
+    }
+
+    const dhmsg = dhs(event, name, room, storedUuid, rand);
+    if (dhmsg) {
+        wss.send(JSON.stringify(dhmsg));
+        console.log("自分のDHを送信完了");
+        
+        // ★追加：送信時刻をメモする
+        dhSentHistory.set(targetUuid, now);
+    }
+
             } else if (data.type === "DH" && data.name !== name) {
                 try {
                     // ★awaitを追加
@@ -848,15 +864,6 @@ function addBubble(text: string, isMe: boolean) {
     } else {
         pinContainer.style.display = "none";
         enemyencyWipeBtn.style.display = "flex";
-        const keys = await restoreKey(localStorage.getItem("pin") || "");
-        const keys2 = await restoreKey(localStorage.getItem("pin") || ""); // 再度復元して同じ鍵が出るか確認
-        // 中身（Rawデータ）を取り出して比較する例
-        const raw1 = await crypto.subtle.exportKey("raw", keys.publicKey);
-        const raw2 = await crypto.subtle.exportKey("raw", keys2.publicKey);
-
-        const isSame = new Uint8Array(raw1).every((val, i) => val === new Uint8Array(raw2)[i]);
-        console.log("🔑 鍵の中身の一致確認:", isSame); // これなら true になるはず！
-        testEd25519Signature(keys.privateKey, keys.publicKey);
         testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
 
     }
