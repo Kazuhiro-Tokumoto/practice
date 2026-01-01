@@ -297,20 +297,38 @@ async function main() {
     function addBubble(text, isMe) {
         const bubble = document.createElement("div");
         const M = isMe;
+        // スタイル設定（既存のものを継承）
         bubble.style.cssText = `
-            max-width: 70%; 
-            padding: 8px 15px; 
-            border-radius: 18px; 
-            font-size: 15px; 
-            align-self: ${M ? "flex-end" : "flex-start"}; 
-            background-color: ${M ? "#0084ff" : "#e4e6eb"}; 
-            color: ${M ? "white" : "#050505"}; 
-            ${M ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"};
-            word-break: break-all;
-            overflow-wrap: break-word;
-            white-space: pre-wrap;
-        `;
-        bubble.textContent = text;
+        max-width: 70%; 
+        padding: 8px 15px; 
+        border-radius: 18px; 
+        font-size: 15px; 
+        align-self: ${M ? "flex-end" : "flex-start"}; 
+        background-color: ${M ? "#0084ff" : "#e4e6eb"}; 
+        color: ${M ? "white" : "#050505"}; 
+        ${M ? "border-bottom-right-radius: 4px;" : "border-bottom-left-radius: 4px;"};
+        word-break: break-all;
+        white-space: pre-wrap;
+    `;
+        // --- http と https の両方に対応するリンク化ロジック ---
+        const urlRegex = /(https?:\/\/[^\s]+)/g; // s? なので http:// も https:// もOK
+        const parts = text.split(urlRegex);
+        parts.forEach(part => {
+            if (part.match(urlRegex)) {
+                const link = document.createElement("a");
+                link.href = part;
+                link.textContent = part;
+                link.target = "_blank"; // LINE内ブラウザなどで開くときに便利
+                link.rel = "noopener noreferrer";
+                link.style.color = M ? "#fff" : "#0084ff"; // 背景色に合わせて調整
+                link.style.textDecoration = "underline";
+                bubble.appendChild(link);
+            }
+            else {
+                // 普通のテキスト部分
+                bubble.appendChild(document.createTextNode(part));
+            }
+        });
         chatBox.appendChild(bubble);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
