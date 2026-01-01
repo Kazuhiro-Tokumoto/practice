@@ -2,7 +2,7 @@ import { generateEd25519KeyPair, generateX25519KeyPair } from "./mojyu-ru/crypto
 import { arrayBufferToBase64, base64ToUint8Array } from "./mojyu-ru/base64.js"; // 16進数変換のみ残す
 import { generateSalt, generateMasterSeed } from "./mojyu-ru/crypto/saltaes.js";
 import { dhs } from "./mojyu-ru/joins.js";
-import { deriveAesKeySafe } from "./mojyu-ru/crypto/kdf.js";
+import { deriveAesKeySafe, testPublicKeyFetch } from "./mojyu-ru/crypto/kdf.js";
 import { decrypt, encrypt, deriveKeyFromPin, deriveSharedKey, aesKeyToArray } from "./mojyu-ru/crypto/aes.js";
 // @supabase/supabase-js ではなく、URLを直接指定する
 // @ts-ignore
@@ -378,27 +378,6 @@ async function main() {
         }
     }
     // 実験：相手のUUID（画像にあった d1fde...）を使って、公開鍵だけを引っこ抜く
-    async function testPublicKeyFetch(targetUuid) {
-        console.log("🛠️ 実験開始: 窓口(View)からデータ取得を試みます...");
-        const { data, error } = await supabase
-            .from('public_profiles') // 👈 さっき作った View の名前
-            .select('*') // 👈 あえて「全部」リクエストしてみる
-            .eq('uuid', targetUuid)
-            .maybeSingle();
-        if (error) {
-            console.error("❌ 失敗:", error.message);
-            return null;
-        }
-        console.log("🎯 取得できたデータ:", data);
-        // 検証
-        if (data && data.email === undefined && data.ed25519_private === undefined) {
-            console.log("✅ 成功！メルアドと秘密鍵は物理的に遮断されています。");
-        }
-        else if (data) {
-            console.warn("⚠️ 警告: 隠すべきデータが見えてしまっています！");
-        }
-        return data;
-    }
     async function restoreKey(pin) {
         // 1. DBからデータを取得
         const dbData = await fetchMySecurityData();
@@ -595,11 +574,13 @@ async function main() {
                         firstRand = peerRand; // 相手が先
                         secondRand = rand; // 自分が後
                     }
-                    aesKeyhash = await deriveAesKeySafe(await sha256(await sha512(combine(await sha512(combine(firstRand, secondRand)), await sha512(aes)))));
+                    aesKeyhash = await deriveAesKeySafe(await sha256(await sha512(combine(await sha512(combine(await sha512(firstRand), await sha512(secondRand))), await sha512(aes)))));
                 }
                 catch (e) {
                     console.error("鍵交換エラー:", e);
                 }
+                console.log("🔑 鍵交換プロセス完了");
+                addSystemMsg("メッセージを送信できます.");
                 // wss.onmessage の中の data.type === "message" の部分
             }
             else if (data.type === "message" && data.name !== name) {
@@ -648,7 +629,7 @@ async function main() {
             }
         };
     });
-    if (localStorage.getItem("pin") === null) {
+    if (localStorage.getItem("pin") === null || localStorage.getItem("pin") === "") {
         enemyencyWipeBtn.style.display = "none";
         roomSelection.style.display = "none";
         pininput.addEventListener('input', () => {
@@ -685,6 +666,4 @@ async function main() {
         testPublicKeyFetch("652c0ecd-c52b-4d12-a9ce-ea5a94b33f8e");
     }
 }
-// 先ほどのログで出ていた CryptoKey を使って実行
-// testEd25519Signature(yourPrivateKey, yourPublicKey);
 main();

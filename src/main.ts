@@ -20,7 +20,8 @@ import {
     dhs
 } from "./mojyu-ru/joins.js";
 import {
-    deriveAesKeySafe
+    deriveAesKeySafe,
+    testPublicKeyFetch
 } from "./mojyu-ru/crypto/kdf.js";
 import {
     decrypt,
@@ -468,34 +469,6 @@ const target = event.target as HTMLInputElement;
         }
     }
     // 実験：相手のUUID（画像にあった d1fde...）を使って、公開鍵だけを引っこ抜く
-    async function testPublicKeyFetch(targetUuid: string): Promise < any > {
-        console.log("🛠️ 実験開始: 窓口(View)からデータ取得を試みます...");
-
-        const {
-            data,
-            error
-        } = await supabase
-        .from('public_profiles') // 👈 さっき作った View の名前
-        .select('*') // 👈 あえて「全部」リクエストしてみる
-        .eq('uuid', targetUuid)
-        .maybeSingle();
-
-        if (error) {
-            console.error("❌ 失敗:", error.message);
-            return null;
-        }
-
-        console.log("🎯 取得できたデータ:", data);
-
-        // 検証
-        if (data && data.email === undefined && data.ed25519_private === undefined) {
-            console.log("✅ 成功！メルアドと秘密鍵は物理的に遮断されています。");
-        } else if (data) {
-            console.warn("⚠️ 警告: 隠すべきデータが見えてしまっています！");
-        }
-
-        return data;
-    }
 
 
     async function restoreKey(pin: string) {
@@ -760,7 +733,7 @@ const target = event.target as HTMLInputElement;
                                 combine(
                                     await sha512(
                                         combine(
-                                            firstRand, secondRand
+                                            await sha512(firstRand), await sha512(secondRand)
                                         )
                                     ), await sha512(aes as Uint8Array
 
@@ -773,6 +746,10 @@ const target = event.target as HTMLInputElement;
                 } catch (e) {
                     console.error("鍵交換エラー:", e);
                 }
+                console.log("🔑 鍵交換プロセス完了");
+                addSystemMsg("メッセージを送信できます.");
+
+
 // wss.onmessage の中の data.type === "message" の部分
 } else if (data.type === "message" && data.name !== name) {
     try {
@@ -825,7 +802,7 @@ const target = event.target as HTMLInputElement;
 
 
 
-    if (localStorage.getItem("pin") === null) {
+    if (localStorage.getItem("pin") === null || localStorage.getItem("pin") === "") {
         enemyencyWipeBtn.style.display = "none";
         roomSelection.style.display = "none";
         pininput.addEventListener('input', () => {
@@ -869,6 +846,5 @@ const target = event.target as HTMLInputElement;
 
 }
 
-// 先ほどのログで出ていた CryptoKey を使って実行
-// testEd25519Signature(yourPrivateKey, yourPublicKey);
+
 main();
