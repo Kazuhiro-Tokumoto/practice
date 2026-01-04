@@ -4,36 +4,68 @@
  * @param sharedBits - deriveSharedSecretから得られた ArrayBuffer
  * @param salt - 毎回ランダムに生成するソルト (16バイト程度)
  * @returns {CryptoKey} - AES-GCMで使える安全な鍵
+ * 
+ * 
+ * 
  */
-export async function deriveAesKeySafe(
-    sharedBits: ArrayBuffer,
-    salt: BufferSource
-): Promise<CryptoKey> {
 
-    // 1. 共有シークレットを KDK (Key Derivation Key) としてインポート
-    const kdk = await crypto.subtle.importKey(
-        "raw",
-        sharedBits,
-        // ここに hash の指定は不要。 deriveKey の方に必要。
-        { name: "HKDF" }, 
-        false,
-        ["deriveKey"]
-    );
+
+import {
+    createClient
+    // @ts-ignore
+} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+
+
+export async function deriveAesKeySafe(rawSeed: Uint8Array): Promise<CryptoKey> {
+  return await crypto.subtle.importKey(
+    "raw",
+    rawSeed as BufferSource,
+    { name: "AES-GCM" },
+    true, // ← ここを true にすれば、後で exportKey が使えるようになります！
+    ["encrypt", "decrypt"]
+  );
+}
 
     // 2. HKDFを使って最終的なAES-GCM鍵を導出
-    const aesKey = await crypto.subtle.deriveKey(
-        {
-            name: "HKDF",
-            // ★★★ 修正箇所：hash アルゴリズムを追加します ★★★
-            hash: "SHA-256", 
-            salt: salt,
-            info: new TextEncoder().encode("aes-gcm encryption key")
-        },
-        kdk,
-        { name: "AES-GCM", length: 256 },
-        true,
-        ["encrypt", "decrypt"]
-    );
 
-    return aesKey;
-}
+            
+   export    async function testPublicKeyFetch(targetUuid: string): Promise < any > {
+        console.log("🛠️ 実験開始: 窓口(View)からデータ取得を試みます...");
+    const supabase = createClient(
+        'https://cedpfdoanarzyxcroymc.supabase.co',
+        'sb_publishable_E5jwgv5t2ONFKg3yFENQmw_lVUSFn4i', {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("my_token")}`,
+                },
+            },
+        }
+    );
+        
+        const {
+            data,
+            error
+        } = await supabase
+        .from('public_profiles') // 👈 さっき作った View の名前
+        .select('*') // 👈 あえて「全部」リクエストしてみる
+        .eq('uuid', targetUuid)
+        .maybeSingle();
+
+        if (error) {
+            console.error("❌ 失敗:", error.message);
+            return null;
+        }
+
+        console.log("🎯 取得できたデータ:", data);
+
+        // 検証
+        if (data && data.email === undefined && data.ed25519_private === undefined) {
+            console.log("✅ 成功！メルアドと秘密鍵は物理的に遮断されています。");
+        } else if (data) {
+            console.warn("⚠️ 警告: 隠すべきデータが見えてしまっています！");
+        }
+
+        return data;
+    }
+    

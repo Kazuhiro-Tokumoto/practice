@@ -1,4 +1,23 @@
 // crypto/aes.ts
+/**
+ * 自分のX25519秘密鍵と相手のX25519公開鍵からAES鍵を作る
+ */
+export async function deriveSharedKey(myPrivateKey: CryptoKey, theirPublicKey: CryptoKey) {
+    return await window.crypto.subtle.deriveKey(
+        {
+            name: "X25519",
+            public: theirPublicKey,
+        },
+        myPrivateKey,
+        {
+            name: "AES-GCM",
+            length: 256,
+        },
+        true,
+        ["encrypt", "decrypt"]
+    );
+}
+
 export async function encrypt(
     key: CryptoKey,
     plaintext: BufferSource
@@ -19,6 +38,13 @@ export async function encrypt(
         iv,
         data
     };
+}
+
+export async function aesKeyToArray(aesKey: CryptoKey): Promise<Uint8Array> {
+  // AES-GCM 鍵も "raw" 形式で 32バイト（256bit）として取り出せます
+  const exported = await window.crypto.subtle.exportKey("raw", aesKey);
+  
+  return new Uint8Array(exported);
 }
 
 export async function decrypt(
@@ -52,7 +78,7 @@ export async function deriveKeyFromPin(pin: string, salt: Uint8Array) {
     {
       name: "PBKDF2",
       salt: salt as BufferSource,
-      iterations: 100000, // 10万回回して強度を上げる
+      iterations: 5000000, // 500万回回して強度を上げる
       hash: "SHA-256"
     },
     baseKey,

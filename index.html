@@ -2,6 +2,10 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="MyChatApp">
+
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Login & Raspberry Pi WSS</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
@@ -32,12 +36,15 @@
     
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function signIn() {
-        await supabaseClient.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: window.location.href }
-        });
-    }
+async function signIn() {
+    await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: { 
+            redirectTo: window.location.href,
+            scopes: 'https://www.googleapis.com/auth/drive.appdata' // これ！
+        }
+    });
+}
 
     async function signOut() {
         await supabaseClient.auth.signOut();
@@ -65,6 +72,7 @@ async function init() {
             localStorage.setItem("my_token", session.access_token);
             localStorage.setItem("my_uuid", user.id);
             localStorage.setItem("my_name", user.user_metadata.full_name || "不明なユーザー");
+            localStorage.setItem("google_token", session.provider_token);
 
             statusDiv.innerHTML = `<span class="success">✅ 認証成功！チャット画面へ移動します...</span>`;
             
