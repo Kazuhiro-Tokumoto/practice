@@ -203,8 +203,10 @@ chatBox.addEventListener("drop", async (e) => {
     // --- 2. 送信司令塔（originalNameを送信に含める） ---
 // ★ 新しく作る：ファイルを受け取って送信するだけの「心臓部」
 async function processFileAndSend(file: File, subType: "image" | "file" | "audio") {
-    if (!aesKeyhash) return;
-    addSystemMsg("鍵がまだ交換されていません。相手が参加するまでお待ちください。");
+    if (!aesKeyhash) {
+           addSystemMsg("鍵がまだ交換されていません。相手が参加するまでお待ちください。");
+        return;
+    }
 
     // 物理班の安全装置
     const MAX_SIZE = 15 * 1024 * 1024;
