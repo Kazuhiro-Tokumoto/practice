@@ -333,8 +333,10 @@ chatBox.addEventListener("drop", async (e) => {
     // --- 2. 送信司令塔（originalNameを送信に含める） ---
 // ★ 新しく作る：ファイルを受け取って送信するだけの「心臓部」
 async function processFileAndSend(file: File, subType: "image" | "file" | "audio") {
-    if (!aesKeyhash) return;
-    addSystemMsg("鍵がまだ交換されていません。相手が参加するまでお待ちください。");
+    if (!aesKeyhash) {
+           addSystemMsg("鍵がまだ交換されていません。相手が参加するまでお待ちください。");
+        return;
+    }
 
     // 物理班の安全装置
     const MAX_SIZE = 15 * 1024 * 1024;
@@ -656,25 +658,6 @@ function addBubble(text: string, isMe: boolean) {
     }
     // 実験：相手のUUID（画像にあった d1fde...）を使って、公開鍵だけを引っこ抜く
 
-async function testGoogleDrive() {
-    const gToken = localStorage.getItem("google_token");
-    if (!gToken) {
-        console.log("（Googleのトークンがないよ！ログインし直してみて）");
-        return;
-    }
-
-    // Google Drive API の「ファイル一覧」を見る窓口を叩いてみる
-    const response = await fetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder', {
-        headers: {
-            'Authorization': `Bearer ${gToken}`
-        }
-    });
-
-    const data = await response.json();
-    console.log("（Driveからの返事：）", data);
-}
-
-testGoogleDrive();
     async function restoreKey(pin: string) {
         // 1. DBからデータを取得
         const dbData = await fetchMySecurityData() as any;
