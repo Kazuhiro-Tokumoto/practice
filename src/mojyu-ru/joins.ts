@@ -1,4 +1,4 @@
-export function dhs(a: any, name: string, room: string,uuid:string,rand:Uint8Array) {
+export function dhs(a: any, name: string, room: string,uuid:string,rand:Uint8Array, myPubKey:Uint8Array): any {
     // a.data が存在するかチェック（安全のため）
     const msgData = typeof a.data === "string" ? JSON.parse(a.data) : a;
 
@@ -9,7 +9,8 @@ export function dhs(a: any, name: string, room: string,uuid:string,rand:Uint8Arr
             uuid: uuid,
             name: name,
             room: room,
-            rand: rand
+            rand: rand,
+            pubKey: myPubKey
         };
     }
     return null;

@@ -93,29 +93,6 @@ class MineSignature {
     }
 }
 // --- 実行デモ ---
-(async () => {
-    const mSign = new MineSignature();
-    // 1. 秘密鍵を安全な乱数で生成 (32バイト)
-    const myPrivKey = new Uint8Array(32);
-    crypto.getRandomValues(myPrivKey);
-    // 16進数で表示（保存用）
-    const privHex = Array.from(myPrivKey).map(b => b.toString(16).padStart(2, '0')).join('');
-    console.log("%c[鍵生成] 秘密鍵(乱数):", "color: orange; font-weight: bold;", privHex);
-    // 2. 公開鍵を生成
-    const myPubKey = await mSign.getPublicKey(myPrivKey);
-    console.log("%c[鍵生成] 公開鍵を生成しました", "color: green;");
-    // 3. 署名テスト
-    const message = "これは物理班の極秘データです。";
-    const signature = await mSign.sign(message, myPrivKey);
-    console.log("%c[署名] 署名を生成完了 (512バイト)", "color: blue;");
-    // 4. 検証テスト
-    const isValid = await mSign.verify(message, signature, myPubKey);
-    console.log("%c[検証] 結果:", "font-size: 1.2em;", isValid ? "✅ 認証成功！マイン本人です。" : "❌ 認証失敗...");
-    // 5. 改ざんテスト
-    const fakeMessage = "これは物理班の公開データです。";
-    const isFakeValid = await mSign.verify(fakeMessage, signature, myPubKey);
-    console.log("%c[偽造テスト] 結果:", "font-size: 1.2em;", isFakeValid ? "❌ 偽造を見抜けませんでした" : "✅ 改ざんを検知しました！");
-})();
 // 32バイトのシード（本来はPINから生成）
 async function main() {
     document.body.style.cssText = "margin: 0; padding: 0; background-color: #f0f2f5; font-family: sans-serif;";
@@ -283,6 +260,7 @@ async function main() {
                 arrayBufferToBase64(encrypted.iv),
                 arrayBufferToBase64(encrypted.data)
             ]);
+            let a = await mSign.sign(dataB64, myPrivKey);
             const msg = {
                 type: "message",
                 subType: finalSubType,
@@ -293,7 +271,8 @@ async function main() {
                 name: name,
                 uuid: storedUuid,
                 iv: ivB64,
-                data: dataB64
+                data: dataB64,
+                syomei: await a
             };
             wss.send(JSON.stringify(msg));
             const url = URL.createObjectURL(new Blob([plaintext], { type: file.type }));
@@ -417,6 +396,7 @@ async function main() {
             return;
         }
         try {
+            const mSign = new MineSignature();
             const encoder = new TextEncoder();
             const plaintext = encoder.encode(text);
             const encrypted = await encrypt(aeskey, plaintext);
@@ -425,13 +405,15 @@ async function main() {
                 arrayBufferToBase64(encrypted.iv),
                 arrayBufferToBase64(encrypted.data)
             ]);
+            const syomei = await mSign.sign(dataB64, myPrivKey);
             const msg = {
                 type: "message",
                 room: room,
                 name: name,
                 uuid: storedUuid,
                 iv: ivB64,
-                data: dataB64
+                data: dataB64,
+                syomei: syomei
             };
             wss.send(JSON.stringify(msg));
             console.log(`%c[送信完了]: ${text}`, "color: #00bfff; font-weight: bold;");
@@ -617,6 +599,29 @@ async function main() {
         },
     });
     let aesKeyhash;
+    const myPrivKey = new Uint8Array(32);
+    let myPubKey;
+    let hepubkey;
+    const mSign = new MineSignature();
+    // 1. 秘密鍵を安全な乱数で生成 (32バイト)
+    crypto.getRandomValues(myPrivKey);
+    // 16進数で表示（保存用）
+    const privHex = Array.from(myPrivKey).map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log("%c[鍵生成] 秘密鍵(乱数):", "color: orange; font-weight: bold;", privHex);
+    // 2. 公開鍵を生成
+    myPubKey = await mSign.getPublicKey(myPrivKey);
+    console.log("%c[鍵生成] 公開鍵を生成しました", "color: green;");
+    // 3. 署名テスト
+    const message = "test message";
+    const signature = await mSign.sign(message, myPrivKey);
+    console.log("%c[署名] 署名を生成完了 (512バイト)", "color: blue;");
+    // 4. 検証テスト
+    const isValid = await mSign.verify(message, signature, myPubKey);
+    console.log("%c[検証] 結果:", "font-size: 1.2em;", isValid ? "✅ 認証成功！マイン本人です。" : "❌ 認証失敗...");
+    // 5. 改ざんテスト
+    const fakeMessage = "test message";
+    const isFakeValid = await mSign.verify(fakeMessage, signature, myPubKey);
+    console.log("%c[偽造テスト] 結果:", "font-size: 1.2em;", isFakeValid ? "❌ 偽造を見抜けませんでした" : "✅ 改ざんを検知しました！");
     if (storedToken === "") {
         window.location.href = "../index.html";
         return;
@@ -693,7 +698,7 @@ async function main() {
                     console.log(`⚠️ ${data.type} 重複のため無視しました`);
                     return;
                 }
-                const dhmsg = dhs(event, name, room, storedUuid, rand);
+                const dhmsg = dhs(event, name, room, storedUuid, rand, myPubKey);
                 if (dhmsg) {
                     wss.send(JSON.stringify(dhmsg));
                     console.log("自分のDHを送信完了");
@@ -725,6 +730,12 @@ async function main() {
                     const peerRand = new Uint8Array(Object.values(data.rand));
                     const myUuid = storedUuid;
                     const peerUuid = data.uuid;
+                    hepubkey = new Uint8Array(Object.values(data.hepubkey));
+                    console.log("相手の乱数:", peerRand);
+                    console.log("自分の乱数:", rand);
+                    console.log("自分のUUID:", myUuid);
+                    console.log("相手のUUID:", peerUuid);
+                    console.log("相手の公開鍵:", hepubkey);
                     // UUIDを比較して、順番を常に一定にする（アルファベット順など）
                     let firstRand, secondRand;
                     if (myUuid < peerUuid) {
@@ -749,6 +760,10 @@ async function main() {
                 try {
                     if (!aesKeyhash)
                         return;
+                    if (data.syoumei !== await mSign.verify(data.data, data.syoumei, hepubkey)) {
+                        console.log("%c[署名検証] メッセージの署名が有効です。", "color: green; font-weight: bold;");
+                        addSystemMsg("検証に失敗しました。改ざんされている可能性があります。");
+                    }
                     const [iv, encryptedContent] = await Promise.all([
                         base64ToUint8Array(data.iv),
                         base64ToUint8Array(data.data)
