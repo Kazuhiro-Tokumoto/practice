@@ -1,4 +1,4 @@
-export function dhs(a, name, room, uuid, rand, myPubKey) {
+export function dhs(a, name, room, uuid, rand) {
     // a.data が存在するかチェック（安全のため）
     const msgData = typeof a.data === "string" ? JSON.parse(a.data) : a;
     if (msgData.type === "dh-start" || msgData.type === "join-broadcast") {
@@ -9,7 +9,6 @@ export function dhs(a, name, room, uuid, rand, myPubKey) {
             name: name,
             room: room,
             rand: rand,
-            pubKey: myPubKey
         };
     }
     return null;
